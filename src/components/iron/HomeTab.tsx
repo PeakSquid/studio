@@ -1,11 +1,10 @@
-
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { IronState } from '@/types/iron';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Settings, Zap, Activity, TrendingUp } from 'lucide-react';
+import { Settings, Zap, Activity, TrendingUp, Clock } from 'lucide-react';
 import { MUSCLES } from '@/lib/constants';
 import { getOverallRank, getMuscleRank, getOverallRankProgress } from '@/lib/iron-utils';
 import SettingsModal from './SettingsModal';
@@ -19,21 +18,30 @@ type HomeTabProps = {
 
 export default function HomeTab({ state, onStartWorkout, updateState }: HomeTabProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [now, setNow] = useState(new Date());
   const rank = getOverallRank(state.lifts);
   const { nextRank, progress, remaining } = getOverallRankProgress(state.lifts);
   const name = state.settings.name || 'Athlete';
   
-  const todaysWorkout = getTodaysWorkout(state);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
-  const getRecoveryStatus = (muscle: string) => {
+  const getRecoveryInfo = (muscle: string) => {
     const recoveryTime = state.muscleRecovery[muscle];
-    if (!recoveryTime) return 'Optimal';
-    const now = new Date();
+    if (!recoveryTime) return { status: 'Optimal', time: '' };
+    
     const target = new Date(recoveryTime);
-    if (now >= target) return 'Optimal';
-    return 'Fatigued';
+    if (now >= target) return { status: 'Optimal', time: '' };
+    
+    const diffMs = target.getTime() - now.getTime();
+    const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
+    
+    return { status: 'Fatigued', time: `READY IN ${diffHours}H` };
   };
 
+  const todaysWorkout = getTodaysWorkout(state);
   const volumeData = state.volumeHistory.slice(-7).map((v, i) => ({ val: v.volume }));
 
   return (
@@ -118,32 +126,40 @@ export default function HomeTab({ state, onStartWorkout, updateState }: HomeTabP
       <section>
         <h3 className="section-header">Biological Status</h3>
         <Card className="p-8 bg-secondary/30 border-border flex flex-col items-center">
-          <div className="relative w-full max-w-[200px] mb-8">
+          <div className="relative w-full max-w-[200px] mb-10">
             <svg viewBox="0 0 100 150" className="w-full h-auto">
               {/* Chest */}
-              <path d="M30 40 Q50 35 70 40 L65 55 Q50 60 35 55 Z" className={`muscle-map-path ${getRecoveryStatus('Chest') === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
-              {/* Abs */}
-              <path d="M40 60 L60 60 L58 90 L42 90 Z" className="muscle-map-path" />
+              <path d="M30 40 Q50 35 70 40 L65 55 Q50 60 35 55 Z" className={`muscle-map-path ${getRecoveryInfo('Chest').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
               {/* Shoulders */}
-              <circle cx="25" cy="45" r="8" className={`muscle-map-path ${getRecoveryStatus('Shoulders') === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
-              <circle cx="75" cy="45" r="8" className={`muscle-map-path ${getRecoveryStatus('Shoulders') === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+              <circle cx="25" cy="45" r="8" className={`muscle-map-path ${getRecoveryInfo('Shoulders').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+              <circle cx="75" cy="45" r="8" className={`muscle-map-path ${getRecoveryInfo('Shoulders').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
               {/* Arms */}
-              <path d="M20 55 L15 90 L25 90 L28 55 Z" className={`muscle-map-path ${getRecoveryStatus('Arms') === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
-              <path d="M80 55 L85 90 L75 90 L72 55 Z" className={`muscle-map-path ${getRecoveryStatus('Arms') === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+              <path d="M20 55 L15 90 L25 90 L28 55 Z" className={`muscle-map-path ${getRecoveryInfo('Arms').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+              <path d="M80 55 L85 90 L75 90 L72 55 Z" className={`muscle-map-path ${getRecoveryInfo('Arms').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
               {/* Legs */}
-              <path d="M35 95 L30 140 L45 140 L48 95 Z" className={`muscle-map-path ${getRecoveryStatus('Legs') === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
-              <path d="M65 95 L70 140 L55 140 L52 95 Z" className={`muscle-map-path ${getRecoveryStatus('Legs') === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+              <path d="M35 95 L30 140 L45 140 L48 95 Z" className={`muscle-map-path ${getRecoveryInfo('Legs').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+              <path d="M65 95 L70 140 L55 140 L52 95 Z" className={`muscle-map-path ${getRecoveryInfo('Legs').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
             </svg>
           </div>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-2 w-full text-[10px] font-black uppercase tracking-widest">
-            {Object.keys(MUSCLES).map(m => (
-              <div key={m} className="flex items-center justify-between border-b border-border/40 pb-1">
-                <span className="text-muted-foreground">{m}</span>
-                <span className={getRecoveryStatus(m) === 'Optimal' ? 'text-accent' : 'text-orange-500'}>
-                  {getRecoveryStatus(m)}
-                </span>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 gap-2 w-full">
+            {Object.keys(MUSCLES).map(m => {
+              const info = getRecoveryInfo(m);
+              return (
+                <div key={m} className="flex items-center justify-between bg-background/40 p-3 rounded-xl border border-border">
+                  <div className="flex items-center gap-3">
+                    <div className={cn("w-2 h-2 rounded-full", info.status === 'Optimal' ? 'bg-accent' : 'bg-orange-500')} />
+                    <span className="text-[10px] font-black uppercase tracking-[2px] text-muted-foreground">{m}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
+                    {info.status === 'Optimal' ? (
+                      <span className="text-accent">Ready for Mission</span>
+                    ) : (
+                      <span className="text-orange-500 flex items-center gap-1.5"><Clock className="w-3 h-3" /> {info.time}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
       </section>

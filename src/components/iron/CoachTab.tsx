@@ -1,11 +1,11 @@
-
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
 import { IronState } from '@/types/iron';
 import { aiCoachChat } from '@/ai/flows/ai-coach-chat';
 import { getTacticalVoice } from '@/ai/flows/ai-coach-voice-flow';
-import { Send, RefreshCcw, Loader2, Bot, Info, User, Volume2, Square } from 'lucide-react';
+import { analyzeEquipment } from '@/ai/flows/iron-vision-flow';
+import { Send, RefreshCcw, Loader2, Bot, Info, User, Volume2, Square, Camera, Eye } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { getOverallRank } from '@/lib/iron-utils';
@@ -29,6 +29,7 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -46,7 +47,6 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
     try {
       const result = await getTacticalVoice({ text: lastAssistantMsg.content });
       setAudioUrl(result.media);
-      // Wait a tick for audio element to be available
       setTimeout(() => {
         if (audioRef.current) {
           audioRef.current.play();
@@ -56,6 +56,41 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
       console.error(e);
       setIsVoicing(false);
     }
+  };
+
+  const handleVisionUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = reader.result as string;
+      setIsLoading(true);
+      
+      updateState(prev => ({
+        ...prev,
+        chatHistory: [...prev.chatHistory, { role: 'user', content: '[Transmitting Equipment Telemetry...]' }]
+      }));
+
+      try {
+        const result = await analyzeEquipment({ photoDataUri: base64 });
+        updateState(prev => ({
+          ...prev,
+          chatHistory: [...prev.chatHistory, { 
+            role: 'assistant', 
+            content: `**Equipment Identified:** ${result.equipmentName}\n\n**Tactical Advice:** ${result.tacticalAdvice}\n\n**Primary Targets:** ${result.targetMuscles.join(', ')}` 
+          }]
+        }));
+      } catch (err) {
+        updateState(prev => ({
+          ...prev,
+          chatHistory: [...prev.chatHistory, { role: 'assistant', content: 'Vision downlink failed. Equipment unrecognized.' }]
+        }));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const stopVoice = () => {
@@ -107,16 +142,10 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
     } catch (e) {
       updateState(prev => ({
         ...prev,
-        chatHistory: [...prev.chatHistory, { role: 'assistant', content: 'Connection failure. Resetting CNS downlink. (Error processing request)' }]
+        chatHistory: [...prev.chatHistory, { role: 'assistant', content: 'Connection failure. Resetting CNS downlink.' }]
       }));
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const clearChat = () => {
-    if (confirm('Wipe tactical briefing history?')) {
-      updateState(prev => ({ ...prev, chatHistory: [] }));
     }
   };
 
@@ -124,10 +153,23 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
     <div className="h-full flex flex-col bg-background animate-in fade-in duration-500">
       <header className="px-6 pt-12 pb-4 border-b border-border flex items-end justify-between bg-background sticky top-0 z-20">
         <div>
-          <p className="eyebrow">Iron Intelligence v2.8</p>
+          <p className="eyebrow">Iron Intelligence v3.0</p>
           <h1 className="hero-title">Iron <span className="text-accent">Coach</span></h1>
         </div>
         <div className="flex gap-2">
+          <input 
+            type="file" 
+            accept="image/*" 
+            className="hidden" 
+            ref={fileInputRef} 
+            onChange={handleVisionUpload}
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="w-10 h-10 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground transition-all active:scale-90 hover:text-accent"
+          >
+            <Camera className="w-4 h-4" />
+          </button>
           {state.chatHistory.length > 0 && (
             <button 
               onClick={isVoicing ? stopVoice : handleVoiceBriefing} 
@@ -136,9 +178,6 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
               {isVoicing ? <Square className="w-4 h-4 fill-current" /> : <Volume2 className="w-4 h-4" />}
             </button>
           )}
-          <button onClick={clearChat} className="w-10 h-10 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground active:scale-90 transition-all hover:text-accent">
-            <RefreshCcw className="w-4 h-4" />
-          </button>
         </div>
       </header>
 
@@ -148,7 +187,6 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
           src={audioUrl} 
           className="hidden" 
           onEnded={() => setIsVoicing(false)} 
-          onError={() => setIsVoicing(false)}
         />
       )}
 
@@ -160,10 +198,10 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
             </div>
             <div>
               <h3 className="font-headline text-3xl leading-none mb-2">Tactical Command</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">I am your Elite Strength AI. State your objective: Hypertrophy, Power, or Programming.</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">I am your Elite Strength AI. Upload a photo of equipment for **IronVision** analysis or state your objective.</p>
             </div>
             <Card className="p-4 bg-secondary/30 border-border text-[10px] text-muted-foreground uppercase font-black tracking-widest flex items-center gap-3">
-              <Info className="w-4 h-4 text-accent" /> Use advice at your own risk. Consult medical staff.
+              <Eye className="w-4 h-4 text-accent" /> IronVision Enabled
             </Card>
           </div>
         )}
@@ -192,7 +230,7 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
             <div className="max-w-[85%] p-4 rounded-2xl bg-secondary border border-border rounded-bl-none">
               <div className="flex gap-2 items-center">
                 <Loader2 className="w-4 h-4 text-accent animate-spin" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Calculating Response...</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Synthesizing Intel...</span>
               </div>
             </div>
           </div>
