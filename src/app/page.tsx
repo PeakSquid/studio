@@ -1,21 +1,48 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { useIronState } from '@/hooks/use-iron-state';
-import HomeTab from '@/components/iron/HomeTab';
-import LiftsTab from '@/components/iron/LiftsTab';
-import CoachTab from '@/components/iron/CoachTab';
-import AchievementsTab from '@/components/iron/AchievementsTab';
-import PlanTab from '@/components/iron/PlanTab';
 import TabNavigation from '@/components/iron/TabNavigation';
-import WorkoutModal from '@/components/iron/WorkoutModal';
-import PRLogModal from '@/components/iron/PRLogModal';
-import Onboarding from '@/components/iron/Onboarding';
 import AuthWrapper from '@/components/iron/AuthWrapper';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
-import { Plus } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// Dynamic imports for performance optimization
+const HomeTab = dynamic(() => import('@/components/iron/HomeTab'), { 
+  loading: () => <TabLoading />,
+  ssr: false 
+});
+const LiftsTab = dynamic(() => import('@/components/iron/LiftsTab'), { 
+  loading: () => <TabLoading />,
+  ssr: false 
+});
+const CoachTab = dynamic(() => import('@/components/iron/CoachTab'), { 
+  loading: () => <TabLoading />,
+  ssr: false 
+});
+const AchievementsTab = dynamic(() => import('@/components/iron/AchievementsTab'), { 
+  loading: () => <TabLoading />,
+  ssr: false 
+});
+const PlanTab = dynamic(() => import('@/components/iron/PlanTab'), { 
+  loading: () => <TabLoading />,
+  ssr: false 
+});
+const WorkoutModal = dynamic(() => import('@/components/iron/WorkoutModal'), { ssr: false });
+const PRLogModal = dynamic(() => import('@/components/iron/PRLogModal'), { ssr: false });
+const Onboarding = dynamic(() => import('@/components/iron/Onboarding'), { ssr: false });
+
+function TabLoading() {
+  return (
+    <div className="flex flex-col items-center justify-center h-full w-full p-12 space-y-4">
+      <Loader2 className="w-8 h-8 text-accent animate-spin" />
+      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Calibrating HUD...</p>
+    </div>
+  );
+}
 
 function IronRankApp() {
   const { state, updateState, isLoaded, isSyncing } = useIronState();
@@ -31,7 +58,12 @@ function IronRankApp() {
     }
   }, [state.settings.theme]);
 
-  if (!isLoaded) return null;
+  if (!isLoaded) return (
+    <div className="flex flex-col h-screen w-full bg-background items-center justify-center p-8">
+      <Loader2 className="w-10 h-10 text-accent animate-spin mb-4" />
+      <p className="eyebrow">Loading Athlete Data...</p>
+    </div>
+  );
 
   if (!state.onboardingComplete) {
     return <Onboarding state={state} updateState={updateState} />;
@@ -78,12 +110,14 @@ function IronRankApp() {
         />
       )}
 
-      <PRLogModal 
-        isOpen={isPRLogOpen}
-        onClose={() => setIsPRLogOpen(false)}
-        state={state}
-        updateState={updateState}
-      />
+      {isPRLogOpen && (
+        <PRLogModal 
+          isOpen={isPRLogOpen}
+          onClose={() => setIsPRLogOpen(false)}
+          state={state}
+          updateState={updateState}
+        />
+      )}
     </div>
   );
 }
