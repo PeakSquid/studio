@@ -39,7 +39,7 @@ const AICoachGeneratePlanInputSchema = z.object({
   lifts: z.record(z.string(), z.object({
     pr: z.number().describe('Personal record weight for the lift in lbs.'),
     reps: z.number().describe('Reps achieved at the personal record weight.'),
-  })).describe('An object containing current personal records for various lifts.'),
+  }).passthrough()).describe('An object containing current personal records for various lifts.'),
   streak: z.number().describe('Current workout streak in days.'),
   workoutsCompleted: z.number().describe('Total number of workouts completed.'),
   bodyweight: z.number().describe('User\'s bodyweight in lbs.'),
@@ -119,17 +119,21 @@ const aiCoachGeneratePlanFlow = ai.defineFlow(
       .join(', ');
     const overallRankValue = overallRank(input.lifts);
 
-    const { output } = await generatePlanPrompt({
-      ...input,
-      liftsSummary,
-      overallRankValue,
-    });
+    try {
+      const { output } = await generatePlanPrompt({
+        ...input,
+        liftsSummary,
+        overallRankValue,
+      });
 
-    if (!output) {
-      throw new Error('Failed to generate training plan.');
+      if (!output) {
+        throw new Error('Intelligence extraction failure: Model output invalid.');
+      }
+
+      return output;
+    } catch (error: any) {
+      throw new Error(`Plan generation uplink failure: ${error.message}`);
     }
-
-    return output;
   }
 );
 

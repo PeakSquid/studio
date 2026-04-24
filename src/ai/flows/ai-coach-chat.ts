@@ -9,7 +9,7 @@ import {z} from 'genkit';
 const LiftDataSchema = z.object({
   pr: z.number().describe('Personal record for the lift in pounds.'),
   reps: z.number().describe('Reps achieved at the personal record weight.'),
-});
+}).passthrough();
 
 const ExerciseSchema = z.object({
   name: z.string().describe('Name of the exercise.'),
@@ -61,7 +61,6 @@ const AICoachChatInputSchema = z.object({
 });
 export type AICoachChatInput = z.infer<typeof AICoachChatInputSchema>;
 
-// Internal schema that includes the processed summary for the prompt template
 const InternalAICoachPromptSchema = AICoachChatInputSchema.extend({
   liftsSummary: z.string(),
 });
@@ -135,10 +134,11 @@ Athlete Data:
 - Bodyweight: {{{bodyweight}}} lb.
 
 Guidelines:
-1. If a plan is requested, use generateWorkoutPlan immediately.
+1. If a plan is requested, use generateWorkoutPlan tool.
 2. If discussing rank, explain thresholds.
 3. Be tactical—no fluff. Use terminology (PR, CNS, Hypertrophy, Volume).
 4. Addressing weak points: Identify the lift with the lowest rank and suggest focus.
+5. ALWAYS return your response in the requested JSON format containing 'reply' and optionally 'plan'.
 
 User Message: {{{query}}}`,
 });
@@ -154,12 +154,22 @@ const aiCoachChatFlow = ai.defineFlow(
       .map(([l, d]) => `${l}: ${d.pr}lb`)
       .join(', ');
 
-    const { output } = await aiCoachPrompt({
-      ...input,
-      liftsSummary,
-    });
+    try {
+      const { output } = await aiCoachPrompt({
+        ...input,
+        liftsSummary,
+      });
 
-    return output || { reply: "Downlink disrupted. State query again." };
+      if (!output) {
+        return { reply: "Command logic error: Model failed to produce structured intelligence. Please re-state query." };
+      }
+
+      return output;
+    } catch (error: any) {
+      return { 
+        reply: `Tactical downlink failure: ${error.message || 'Unknown CNS disruption'}. Check signal and retry.` 
+      };
+    }
   }
 );
 
