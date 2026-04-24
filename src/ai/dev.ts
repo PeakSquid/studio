@@ -8,3 +8,4 @@ import '@/ai/flows/generate-totem-flow.ts';
 import '@/ai/flows/ai-coach-voice-flow.ts';
 import '@/ai/flows/iron-vision-flow.ts';
 import '@/ai/flows/tactical-tip-flow.ts';
+import '@/ai/flows/generate-hype-video-flow.ts';

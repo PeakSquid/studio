@@ -4,9 +4,9 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { IronState } from '@/types/iron';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Settings, Zap, Clock, Cloud, Volume2, Square, Brain, Terminal, Shield, Activity, Target } from 'lucide-react';
+import { Settings, Zap, Clock, Cloud, Volume2, Square, Brain, Terminal, Shield, Activity, Target, BarChart3 } from 'lucide-react';
 import { MUSCLES } from '@/lib/constants';
-import { getOverallRank, getOverallRankProgress, getNearestMilestone, getCNSFatigue, getAthleteLevel, getDailyObjective } from '@/lib/iron-utils';
+import { getOverallRank, getOverallRankProgress, getNearestMilestone, getCNSFatigue, getAthleteLevel, getDailyObjective, getWeeklyTonnage } from '@/lib/iron-utils';
 import { getTacticalVoice } from '@/ai/flows/ai-coach-voice-flow';
 import { getDailyTacticalTip } from '@/ai/flows/tactical-tip-flow';
 import SettingsModal from './SettingsModal';
@@ -28,15 +28,14 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   
   const rank = useMemo(() => getOverallRank(state.lifts), [state.lifts]);
-  const rankProgressData = useMemo(() => getOverallRankProgress(state.lifts), [state.lifts]);
-  const milestone = useMemo(() => getNearestMilestone(state.lifts), [state.lifts]);
   const cnsLoad = useMemo(() => getCNSFatigue(state.streak, state.activity), [state.streak, state.activity]);
   const athleteLevelData = useMemo(() => getAthleteLevel(state.xp || 0), [state.xp]);
   const objective = useMemo(() => getDailyObjective(state), [state]);
+  const weeklyTonnage = useMemo(() => getWeeklyTonnage(state.workoutLogs), [state.workoutLogs]);
 
   const name = state.settings.name || 'Athlete';
-  const { nextRank, progress: rankProgress, remaining } = rankProgressData;
   const { level, progress: levelProgress } = athleteLevelData;
+  const weeklyGoal = objective.targetVolume * 4; // Arbitrary 4-session weekly goal
   
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
@@ -130,8 +129,28 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
         />
       )}
 
+      <div className="grid grid-cols-1 gap-4 mb-6">
+        <Card className="p-5 glass-card relative overflow-hidden group">
+          <div className="scanline" />
+          <div className="flex justify-between items-end mb-4">
+            <div>
+              <div className="hud-label mb-1">Weekly Tonnage Progress</div>
+              <div className="font-headline text-4xl leading-none tracking-tighter italic text-accent">{weeklyTonnage.toLocaleString()} <span className="text-xs font-sans not-italic text-muted-foreground">LB</span></div>
+            </div>
+            <div className="text-right">
+              <div className="hud-label mb-1">Target Mission</div>
+              <div className="text-xs font-bold text-muted-foreground">{weeklyGoal.toLocaleString()} LB</div>
+            </div>
+          </div>
+          <Progress value={Math.min((weeklyTonnage / weeklyGoal) * 100, 100)} className="h-2 bg-background/50 mb-1" />
+          <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-muted-foreground/30">
+            <span>Monday Reset</span>
+            <span>{Math.round((weeklyTonnage / weeklyGoal) * 100)}% Synchronized</span>
+          </div>
+        </Card>
+      </div>
+
       <Card className="p-5 mb-6 glass-card border-accent/20 relative overflow-hidden group">
-        <div className="scanline" />
         <div className="flex justify-between items-end mb-4">
           <div>
             <div className="hud-label mb-1">Current Objective</div>
@@ -248,4 +267,3 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
     </div>
   );
 }
-

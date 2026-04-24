@@ -3,7 +3,6 @@ import { IronState, LiftData } from '@/types/iron';
 
 /**
  * Determines the rank of a specific lift based on weight.
- * Hardened with defensive checks for lift name and weight.
  */
 export function getLiftRank(lift: string, weight: number): string {
   if (!lift) return 'Bronze';
@@ -18,7 +17,6 @@ export function getLiftRank(lift: string, weight: number): string {
 
 /**
  * Calculates the overall athlete rank based on all lifts.
- * Hardened with deep null/type checking for telemetry record.
  */
 export function getOverallRank(lifts: Record<string, LiftData>): string {
   if (!lifts || typeof lifts !== 'object') return 'Bronze';
@@ -37,7 +35,6 @@ export function getOverallRank(lifts: Record<string, LiftData>): string {
 
 /**
  * Calculates progress toward the next overall rank.
- * Fixed logic bug: Now correctly checks specific lift ranks during progress evaluation.
  */
 export function getOverallRankProgress(lifts: Record<string, LiftData>) {
   const currentRank = getOverallRank(lifts);
@@ -51,10 +48,6 @@ export function getOverallRankProgress(lifts: Record<string, LiftData>) {
   let totalRequired = 0;
   let currentCount = 0;
 
-  // Next rank criteria:
-  // Silver: 3 lifts at Silver or higher
-  // Gold: 4 lifts at Gold or higher
-  // Elite: 4 lifts at Elite or higher
   if (nextRank === 'Silver') {
     totalRequired = 3;
     currentCount = Object.entries(lifts).filter(([name, data]) => {
@@ -201,4 +194,21 @@ export function getDailyObjective(state: IronState) {
     label: `Move ${targetVolume.toLocaleString()}lb Iron`,
     type: 'Volume Mission'
   };
+}
+
+/**
+ * Calculates weekly tonnage progress.
+ */
+export function getWeeklyTonnage(workoutLogs: any[]) {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Monday start
+  const monday = new Date(now.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+
+  const weeklyVolume = workoutLogs
+    .filter(log => new Date(log.date) >= monday)
+    .reduce((sum, log) => sum + (log.volume || 0), 0);
+
+  return weeklyVolume;
 }

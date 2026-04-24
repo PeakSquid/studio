@@ -8,7 +8,8 @@ import { Progress } from '@/components/ui/progress';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, LineChart, Line, Tooltip } from 'recharts';
 import { getLiftRank, getLiftProgress, getOverallRank, getRadarData } from '@/lib/iron-utils';
 import { generateSpiritTotem } from '@/ai/flows/generate-totem-flow';
-import { Loader2, Sparkles, Image as ImageIcon, Scale, History, Target, Zap } from 'lucide-react';
+import { generateHypeVideo } from '@/ai/flows/generate-hype-video-flow';
+import { Loader2, Sparkles, Image as ImageIcon, Scale, History, Target, Zap, Play, Film } from 'lucide-react';
 import Image from 'next/image';
 
 type LiftsTabProps = {
@@ -18,7 +19,9 @@ type LiftsTabProps = {
 
 export default function LiftsTab({ state }: LiftsTabProps) {
   const [isGeneratingTotem, setIsGeneratingTotem] = useState(false);
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [totem, setTotem] = useState<{ url: string; desc: string } | null>(null);
+  const [hypeVideo, setHypeVideo] = useState<string | null>(null);
 
   const radarData = useMemo(() => getRadarData(state.lifts), [state.lifts]);
   const weightHistory = useMemo(() => state.settings.weightHistory || [], [state.settings.weightHistory]);
@@ -35,6 +38,22 @@ export default function LiftsTab({ state }: LiftsTabProps) {
     }
   };
 
+  const handleGenerateHypeVideo = async () => {
+    if (!totem) return;
+    setIsGeneratingVideo(true);
+    try {
+      const result = await generateHypeVideo({ 
+        rank: getOverallRank(state.lifts),
+        totemDescription: totem.desc
+      });
+      setHypeVideo(result.videoUrl);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsGeneratingVideo(false);
+    }
+  };
+
   return (
     <div className="p-6 pt-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-32">
       <header className="mb-8">
@@ -43,7 +62,7 @@ export default function LiftsTab({ state }: LiftsTabProps) {
       </header>
 
       <section className="mb-12">
-        <h3 className="section-header">Athlete Spirit Totem</h3>
+        <h3 className="section-header">Athlete Identity Matrix</h3>
         <Card className="p-8 glass-card overflow-hidden relative group">
           <div className="scanline" />
           {!totem ? (
@@ -66,19 +85,50 @@ export default function LiftsTab({ state }: LiftsTabProps) {
             </div>
           ) : (
             <div className="space-y-6 animate-in zoom-in-95 duration-700">
-              <div className="relative aspect-square w-full max-w-[260px] mx-auto rounded-[40px] overflow-hidden border-2 border-accent/20 shadow-[0_0_60px_rgba(232,255,58,0.15)]">
-                <Image src={totem.url} alt="Spirit Totem" fill className="object-cover" />
+              <div className="relative aspect-square w-full max-w-[260px] mx-auto rounded-[40px] overflow-hidden border-2 border-accent/20 shadow-[0_0_60px_rgba(232,255,58,0.15)] bg-black/40">
+                {hypeVideo ? (
+                  <video src={hypeVideo} autoPlay loop muted className="w-full h-full object-cover" />
+                ) : (
+                  <Image src={totem.url} alt="Spirit Totem" fill className="object-cover" />
+                )}
+                {isGeneratingVideo && (
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
+                    <Loader2 className="w-10 h-10 text-accent animate-spin mb-3" />
+                    <p className="text-[9px] font-black uppercase tracking-widest text-accent">Generating Cinematic Hype Reel (Veo 3.0)...</p>
+                  </div>
+                )}
               </div>
-              <div className="text-center space-y-3">
+              <div className="text-center space-y-4">
                 <h4 className="font-headline text-4xl text-accent uppercase italic tracking-tighter">Form Manifested</h4>
                 <p className="text-xs italic text-muted-foreground font-medium px-6 leading-relaxed max-w-sm mx-auto">"{totem.desc}"</p>
-                <button 
-                  onClick={handleGenerateTotem}
-                  disabled={isGeneratingTotem}
-                  className="mt-6 text-[10px] font-black uppercase tracking-[4px] text-muted-foreground/50 hover:text-accent transition-colors"
-                >
-                  Regenerate Telemetry
-                </button>
+                
+                <div className="flex flex-col gap-2 pt-4">
+                  {!hypeVideo ? (
+                    <button 
+                      onClick={handleGenerateHypeVideo}
+                      disabled={isGeneratingVideo}
+                      className="bg-secondary text-foreground border border-border px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-[2px] flex items-center gap-3 mx-auto active:scale-95 transition-all"
+                    >
+                      {isGeneratingVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Film className="w-4 h-4" />}
+                      Generate Hype Reel
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => setHypeVideo(null)}
+                      className="text-[9px] font-black uppercase tracking-[2px] text-muted-foreground hover:text-accent"
+                    >
+                      Back to Static Totem
+                    </button>
+                  )}
+                  
+                  <button 
+                    onClick={handleGenerateTotem}
+                    disabled={isGeneratingTotem || isGeneratingVideo}
+                    className="text-[9px] font-black uppercase tracking-[4px] text-muted-foreground/30 hover:text-accent transition-colors mt-2"
+                  >
+                    Reset Identity Telemetry
+                  </button>
+                </div>
               </div>
             </div>
           )}
