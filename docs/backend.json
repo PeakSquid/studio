@@ -1,0 +1,996 @@
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Stores user-specific settings, preferences, and overall fitness statistics.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "weightUnit": {
+          "type": "string",
+          "description": "Preferred unit for displaying weight (e.g., 'lb' for pounds, 'kg' for kilograms).",
+          "format": "enum"
+        },
+        "bodyweightKg": {
+          "type": "number",
+          "description": "The user's current bodyweight in kilograms (canonical storage unit)."
+        },
+        "overallRank": {
+          "type": "string",
+          "description": "The user's current overall rank (e.g., Bronze, Silver, Gold, Elite)."
+        },
+        "currentStreakDays": {
+          "type": "number",
+          "description": "The current number of consecutive days the user has completed a workout."
+        },
+        "lastWorkoutDate": {
+          "type": "string",
+          "description": "The date and time of the user's last completed workout.",
+          "format": "date-time"
+        },
+        "totalWorkoutsCompleted": {
+          "type": "number",
+          "description": "The total count of all workouts completed by the user."
+        },
+        "weekStartDate": {
+          "type": "string",
+          "description": "The ISO 8601 date string for the Monday of the current week, used for tracking weekly activity.",
+          "format": "date"
+        },
+        "weeklyMuscleActivity": {
+          "type": "array",
+          "description": "A list of muscle groups targeted and their activity count for the current week. (Relationship: UserProfile 1:N WeeklyMuscleActivity)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "personalRecordIds": {
+          "type": "array",
+          "description": "References to PersonalRecord entities owned by this user. (Relationship: UserProfile 1:N PersonalRecord)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unlockedAchievementIds": {
+          "type": "array",
+          "description": "References to UserAchievement entities unlocked by this user. (Relationship: UserProfile 1:N UserAchievement)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "trainingPlanIds": {
+          "type": "array",
+          "description": "References to TrainingPlan entities created for this user. (Relationship: UserProfile 1:N TrainingPlan)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "chatHistoryEntryIds": {
+          "type": "array",
+          "description": "References to ChatHistoryEntry entities for this user's conversation with the AI coach. (Relationship: UserProfile 1:N ChatHistoryEntry)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "weightUnit",
+        "bodyweightKg",
+        "overallRank",
+        "currentStreakDays",
+        "totalWorkoutsCompleted",
+        "weekStartDate",
+        "weeklyMuscleActivity",
+        "personalRecordIds",
+        "unlockedAchievementIds",
+        "trainingPlanIds",
+        "chatHistoryEntryIds"
+      ]
+    },
+    "WeeklyMuscleActivity": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WeeklyMuscleActivity",
+      "type": "object",
+      "description": "Records the activity count for a specific muscle group within a user's week.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the WeeklyMuscleActivity entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile this activity belongs to. (Relationship: UserProfile 1:N WeeklyMuscleActivity)"
+        },
+        "muscleGroup": {
+          "type": "string",
+          "description": "The name of the muscle group (e.g., 'Chest', 'Back', 'Legs')."
+        },
+        "activityCount": {
+          "type": "number",
+          "description": "The number of times this muscle group was targeted this week."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "muscleGroup",
+        "activityCount"
+      ]
+    },
+    "LiftDefinition": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LiftDefinition",
+      "type": "object",
+      "description": "Defines a type of lift or exercise that users can track personal records for.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the LiftDefinition entity. Often the lift's name itself (e.g., 'Bench Press')."
+        },
+        "name": {
+          "type": "string",
+          "description": "The display name of the lift."
+        },
+        "isStandardLift": {
+          "type": "boolean",
+          "description": "Indicates if this is a predefined standard lift or a user-created custom lift."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "isStandardLift"
+      ]
+    },
+    "PersonalRecord": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PersonalRecord",
+      "type": "object",
+      "description": "Records a specific personal record achieved by a user for a given lift.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PersonalRecord entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who owns this personal record. (Relationship: UserProfile 1:N PersonalRecord)"
+        },
+        "liftDefinitionId": {
+          "type": "string",
+          "description": "Reference to the LiftDefinition this personal record is for. (Relationship: PersonalRecord N:1 LiftDefinition)"
+        },
+        "weightKg": {
+          "type": "number",
+          "description": "The weight lifted in kilograms (canonical storage unit)."
+        },
+        "reps": {
+          "type": "number",
+          "description": "The number of repetitions performed for this personal record weight."
+        },
+        "recordDate": {
+          "type": "string",
+          "description": "The date and time when this personal record was set.",
+          "format": "date-time"
+        },
+        "unitLogged": {
+          "type": "string",
+          "description": "The unit (lb or kg) used when this specific PR was logged."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "liftDefinitionId",
+        "weightKg",
+        "reps",
+        "recordDate",
+        "unitLogged"
+      ]
+    },
+    "AchievementDefinition": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AchievementDefinition",
+      "type": "object",
+      "description": "Defines the characteristics and requirements of an unlockable achievement in the app.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the AchievementDefinition entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the achievement."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of how to unlock the achievement."
+        },
+        "icon": {
+          "type": "string",
+          "description": "An emoji or symbolic icon representing the achievement."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category the achievement belongs to (e.g., 'grind', 'streak', 'pr', 'rank').",
+          "format": "enum"
+        },
+        "xpReward": {
+          "type": "number",
+          "description": "The experience points awarded upon unlocking this achievement."
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "icon",
+        "category",
+        "xpReward"
+      ]
+    },
+    "UserAchievement": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserAchievement",
+      "type": "object",
+      "description": "Records an achievement that a user has successfully unlocked.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserAchievement entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who unlocked this achievement. (Relationship: UserProfile 1:N UserAchievement)"
+        },
+        "achievementDefinitionId": {
+          "type": "string",
+          "description": "Reference to the AchievementDefinition that was unlocked. (Relationship: UserAchievement N:1 AchievementDefinition)"
+        },
+        "unlockedDate": {
+          "type": "string",
+          "description": "The date and time when the achievement was unlocked.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "achievementDefinitionId",
+        "unlockedDate"
+      ]
+    },
+    "TrainingPlan": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TrainingPlan",
+      "type": "object",
+      "description": "An AI-generated, personalized multi-week training program for a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the TrainingPlan entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile for whom this plan was generated. (Relationship: UserProfile 1:N TrainingPlan)"
+        },
+        "generationDate": {
+          "type": "string",
+          "description": "The date and time when this training plan was generated by the AI.",
+          "format": "date-time"
+        },
+        "totalWeeks": {
+          "type": "number",
+          "description": "The total number of weeks planned in this program."
+        },
+        "planBlockIds": {
+          "type": "array",
+          "description": "References to the PlanBlock entities that constitute this training plan. (Relationship: TrainingPlan 1:N PlanBlock)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "planGoalIds": {
+          "type": "array",
+          "description": "References to the PlanGoal entities defining targets within this training plan. (Relationship: TrainingPlan 1:N PlanGoal)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "weeklySchedule": {
+          "type": "array",
+          "description": "An array representing the weekly schedule, where each item corresponds to a day (Sunday=0, Monday=1, etc.). Values are either 'rest' or a WorkoutDefinition ID for that day. (Relationship: TrainingPlan 1:N WorkoutDefinition for planned workouts)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "workoutDefinitionIds": {
+          "type": "array",
+          "description": "References to the WorkoutDefinition entities specifically created for this plan. (Relationship: TrainingPlan 1:N WorkoutDefinition)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "generationDate",
+        "totalWeeks",
+        "planBlockIds",
+        "planGoalIds",
+        "weeklySchedule",
+        "workoutDefinitionIds"
+      ]
+    },
+    "PlanBlock": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PlanBlock",
+      "type": "object",
+      "description": "Represents a distinct phase or block within a larger TrainingPlan.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PlanBlock entity."
+        },
+        "trainingPlanId": {
+          "type": "string",
+          "description": "Reference to the TrainingPlan this block belongs to. (Relationship: TrainingPlan 1:N PlanBlock)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the training block (e.g., 'Block 1 — Strength Foundation')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description outlining the focus or methodology of this block."
+        },
+        "startWeek": {
+          "type": "number",
+          "description": "The starting week number of this block within the overall training plan."
+        },
+        "endWeek": {
+          "type": "number",
+          "description": "The ending week number of this block within the overall training plan."
+        }
+      },
+      "required": [
+        "id",
+        "trainingPlanId",
+        "name",
+        "description",
+        "startWeek",
+        "endWeek"
+      ]
+    },
+    "PlanGoal": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PlanGoal",
+      "type": "object",
+      "description": "Defines a specific personal record target for a lift within a TrainingPlan.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PlanGoal entity."
+        },
+        "trainingPlanId": {
+          "type": "string",
+          "description": "Reference to the TrainingPlan this goal is part of. (Relationship: TrainingPlan 1:N PlanGoal)"
+        },
+        "liftDefinitionId": {
+          "type": "string",
+          "description": "Reference to the LiftDefinition for which this goal is set. (Relationship: PlanGoal N:1 LiftDefinition)"
+        },
+        "startWeightKg": {
+          "type": "number",
+          "description": "The user's personal record weight in kilograms at the start of the plan for this lift."
+        },
+        "targetWeightKg": {
+          "type": "number",
+          "description": "The target personal record weight in kilograms to achieve by the end of the plan for this lift."
+        }
+      },
+      "required": [
+        "id",
+        "trainingPlanId",
+        "liftDefinitionId",
+        "startWeightKg",
+        "targetWeightKg"
+      ]
+    },
+    "WorkoutDefinition": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WorkoutDefinition",
+      "type": "object",
+      "description": "A blueprint or template for a specific workout session, outlining its structure and exercises.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the WorkoutDefinition entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The display name of the workout (e.g., 'Push Power', 'Leg Day')."
+        },
+        "type": {
+          "type": "string",
+          "description": "The general type or focus of the workout (e.g., 'push', 'pull', 'legs', 'full')."
+        },
+        "focus": {
+          "type": "string",
+          "description": "A descriptive string indicating the primary muscle groups or training focus."
+        },
+        "estimatedDurationMinutes": {
+          "type": "number",
+          "description": "The estimated duration of the workout in minutes."
+        },
+        "xpReward": {
+          "type": "number",
+          "description": "Experience points awarded for completing this workout."
+        },
+        "workoutExerciseIds": {
+          "type": "array",
+          "description": "References to WorkoutExercise entities that compose this workout definition. (Relationship: WorkoutDefinition 1:N WorkoutExercise)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "focus",
+        "estimatedDurationMinutes",
+        "xpReward",
+        "workoutExerciseIds"
+      ]
+    },
+    "WorkoutExercise": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WorkoutExercise",
+      "type": "object",
+      "description": "Defines a specific exercise instance within a WorkoutDefinition, including its sets, reps, and suggested weight.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the WorkoutExercise entity."
+        },
+        "workoutDefinitionId": {
+          "type": "string",
+          "description": "Reference to the WorkoutDefinition this exercise belongs to. (Relationship: WorkoutDefinition 1:N WorkoutExercise)"
+        },
+        "liftDefinitionId": {
+          "type": "string",
+          "description": "Reference to the LiftDefinition (type of exercise) being performed. (Relationship: WorkoutExercise N:1 LiftDefinition)"
+        },
+        "setsPlanned": {
+          "type": "number",
+          "description": "The number of sets planned for this exercise."
+        },
+        "repsPlanned": {
+          "type": "string",
+          "description": "The planned repetition scheme (e.g., '5', '8-12', 'AMRAP')."
+        },
+        "suggestedWeightKg": {
+          "type": "number",
+          "description": "The suggested starting weight in kilograms for this exercise instance."
+        }
+      },
+      "required": [
+        "id",
+        "workoutDefinitionId",
+        "liftDefinitionId",
+        "setsPlanned",
+        "repsPlanned",
+        "suggestedWeightKg"
+      ]
+    },
+    "WorkoutLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WorkoutLog",
+      "type": "object",
+      "description": "Records the completion of a workout session by a user, including summary statistics and performance logs.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the WorkoutLog entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who completed this workout. (Relationship: UserProfile 1:N WorkoutLog)"
+        },
+        "workoutDefinitionId": {
+          "type": "string",
+          "description": "Optional reference to the WorkoutDefinition that guided this workout, if applicable. (Relationship: WorkoutLog N:1 WorkoutDefinition)"
+        },
+        "logDate": {
+          "type": "string",
+          "description": "The date and time when the workout was completed.",
+          "format": "date-time"
+        },
+        "totalSetsCompleted": {
+          "type": "number",
+          "description": "The total number of sets completed across all exercises in this workout."
+        },
+        "totalVolumeKg": {
+          "type": "number",
+          "description": "The total volume (weight × reps) lifted in kilograms during this workout."
+        },
+        "newPersonalRecordsCount": {
+          "type": "number",
+          "description": "The number of new personal records achieved during this workout session."
+        },
+        "exercisePerformanceLogIds": {
+          "type": "array",
+          "description": "References to ExercisePerformanceLog entities detailing each exercise performed in this workout. (Relationship: WorkoutLog 1:N ExercisePerformanceLog)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "logDate",
+        "totalSetsCompleted",
+        "totalVolumeKg",
+        "newPersonalRecordsCount",
+        "exercisePerformanceLogIds"
+      ]
+    },
+    "ExercisePerformanceLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ExercisePerformanceLog",
+      "type": "object",
+      "description": "Details the performance of a specific exercise within a completed WorkoutLog.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ExercisePerformanceLog entity."
+        },
+        "workoutLogId": {
+          "type": "string",
+          "description": "Reference to the WorkoutLog this exercise performance belongs to. (Relationship: WorkoutLog 1:N ExercisePerformanceLog)"
+        },
+        "liftDefinitionId": {
+          "type": "string",
+          "description": "Reference to the LiftDefinition (type of exercise) performed. (Relationship: ExercisePerformanceLog N:1 LiftDefinition)"
+        },
+        "setsCompleted": {
+          "type": "number",
+          "description": "The number of sets completed for this specific exercise."
+        },
+        "maxWeightLiftedKg": {
+          "type": "number",
+          "description": "The maximum weight lifted in kilograms for any single set of this exercise during the workout."
+        },
+        "isPersonalRecord": {
+          "type": "boolean",
+          "description": "Indicates if a new personal record was set for this exercise during this performance."
+        },
+        "workoutSetLogIds": {
+          "type": "array",
+          "description": "References to WorkoutSetLog entities detailing each individual set performed for this exercise. (Relationship: ExercisePerformanceLog 1:N WorkoutSetLog)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "workoutLogId",
+        "liftDefinitionId",
+        "setsCompleted",
+        "maxWeightLiftedKg",
+        "isPersonalRecord",
+        "workoutSetLogIds"
+      ]
+    },
+    "WorkoutSetLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WorkoutSetLog",
+      "type": "object",
+      "description": "Logs the details of a single set performed for an exercise within a WorkoutLog.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the WorkoutSetLog entity."
+        },
+        "exercisePerformanceLogId": {
+          "type": "string",
+          "description": "Reference to the ExercisePerformanceLog this set belongs to. (Relationship: ExercisePerformanceLog 1:N WorkoutSetLog)"
+        },
+        "setNumber": {
+          "type": "number",
+          "description": "The ordinal number of the set (e.g., 1st, 2nd)."
+        },
+        "weightKg": {
+          "type": "number",
+          "description": "The weight lifted in kilograms for this set."
+        },
+        "reps": {
+          "type": "number",
+          "description": "The number of repetitions performed in this set."
+        },
+        "isCompleted": {
+          "type": "boolean",
+          "description": "Indicates if this set was marked as completed."
+        },
+        "isPersonalRecordSet": {
+          "type": "boolean",
+          "description": "Indicates if this specific set constituted a new personal record for the associated lift."
+        }
+      },
+      "required": [
+        "id",
+        "exercisePerformanceLogId",
+        "setNumber",
+        "weightKg",
+        "reps",
+        "isCompleted",
+        "isPersonalRecordSet"
+      ]
+    },
+    "ChatHistoryEntry": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChatHistoryEntry",
+      "type": "object",
+      "description": "Stores a single message exchanged between the user and the AI coach.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ChatHistoryEntry entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who participated in this chat. (Relationship: UserProfile 1:N ChatHistoryEntry)"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time the message was sent.",
+          "format": "date-time"
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the sender ('user' or 'assistant').",
+          "format": "enum"
+        },
+        "content": {
+          "type": "string",
+          "description": "The text content of the message."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "timestamp",
+        "role",
+        "content"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores user-specific settings, preferences, and overall fitness statistics. This is the root for all user-owned data. Owned by the user identified by `userId`."
+        }
+      },
+      {
+        "path": "/users/{userId}/weekly_muscle_activities/{muscleActivityId}",
+        "definition": {
+          "entityName": "WeeklyMuscleActivity",
+          "schema": {
+            "$ref": "#/backend/entities/WeeklyMuscleActivity"
+          },
+          "description": "Records the activity count for a specific muscle group within a user's week. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user who owns this weekly muscle activity."
+            },
+            {
+              "name": "muscleActivityId",
+              "description": "The unique identifier for the weekly muscle activity entry (e.g., 'Chest')."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/lift_definitions/{liftDefinitionId}",
+        "definition": {
+          "entityName": "LiftDefinition",
+          "schema": {
+            "$ref": "#/backend/entities/LiftDefinition"
+          },
+          "description": "Defines a type of lift or exercise. These are global and publicly readable."
+        }
+      },
+      {
+        "path": "/users/{userId}/personal_records/{personalRecordId}",
+        "definition": {
+          "entityName": "PersonalRecord",
+          "schema": {
+            "$ref": "#/backend/entities/PersonalRecord"
+          },
+          "description": "Records a specific personal record achieved by a user for a given lift. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user who owns this personal record."
+            },
+            {
+              "name": "personalRecordId",
+              "description": "The unique identifier for the personal record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/achievement_definitions/{achievementDefinitionId}",
+        "definition": {
+          "entityName": "AchievementDefinition",
+          "schema": {
+            "$ref": "#/backend/entities/AchievementDefinition"
+          },
+          "description": "Defines the characteristics and requirements of an unlockable achievement. These are global and publicly readable."
+        }
+      },
+      {
+        "path": "/users/{userId}/user_achievements/{userAchievementId}",
+        "definition": {
+          "entityName": "UserAchievement",
+          "schema": {
+            "$ref": "#/backend/entities/UserAchievement"
+          },
+          "description": "Records an achievement that a user has successfully unlocked. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user who unlocked this achievement."
+            },
+            {
+              "name": "userAchievementId",
+              "description": "The unique identifier for the user achievement."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/training_plans/{trainingPlanId}",
+        "definition": {
+          "entityName": "TrainingPlan",
+          "schema": {
+            "$ref": "#/backend/entities/TrainingPlan"
+          },
+          "description": "An AI-generated, personalized multi-week training program for a user. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user for whom this plan was generated."
+            },
+            {
+              "name": "trainingPlanId",
+              "description": "The unique identifier for the training plan."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/training_plans/{trainingPlanId}/plan_blocks/{planBlockId}",
+        "definition": {
+          "entityName": "PlanBlock",
+          "schema": {
+            "$ref": "#/backend/entities/PlanBlock"
+          },
+          "description": "Represents a distinct phase or block within a larger TrainingPlan. Includes denormalized 'userId' and 'trainingPlanId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user who owns the parent training plan."
+            },
+            {
+              "name": "trainingPlanId",
+              "description": "The ID of the parent training plan."
+            },
+            {
+              "name": "planBlockId",
+              "description": "The unique identifier for the plan block."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/training_plans/{trainingPlanId}/plan_goals/{planGoalId}",
+        "definition": {
+          "entityName": "PlanGoal",
+          "schema": {
+            "$ref": "#/backend/entities/PlanGoal"
+          },
+          "description": "Defines a specific personal record target for a lift within a TrainingPlan. Includes denormalized 'userId' and 'trainingPlanId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user who owns the parent training plan."
+            },
+            {
+              "name": "trainingPlanId",
+              "description": "The ID of the parent training plan."
+            },
+            {
+              "name": "planGoalId",
+              "description": "The unique identifier for the plan goal."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/training_plans/{trainingPlanId}/workout_definitions/{workoutDefinitionId}",
+        "definition": {
+          "entityName": "WorkoutDefinition",
+          "schema": {
+            "$ref": "#/backend/entities/WorkoutDefinition"
+          },
+          "description": "A blueprint or template for a specific workout session, outlining its structure and exercises. These are plan-specific. Includes denormalized 'userId' and 'trainingPlanId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user who owns the parent training plan."
+            },
+            {
+              "name": "trainingPlanId",
+              "description": "The ID of the parent training plan."
+            },
+            {
+              "name": "workoutDefinitionId",
+              "description": "The unique identifier for the workout definition."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/training_plans/{trainingPlanId}/workout_definitions/{workoutDefinitionId}/workout_exercises/{workoutExerciseId}",
+        "definition": {
+          "entityName": "WorkoutExercise",
+          "schema": {
+            "$ref": "#/backend/entities/WorkoutExercise"
+          },
+          "description": "Defines a specific exercise instance within a WorkoutDefinition. Includes denormalized 'userId', 'trainingPlanId', and 'workoutDefinitionId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user who owns the parent training plan."
+            },
+            {
+              "name": "trainingPlanId",
+              "description": "The ID of the parent training plan."
+            },
+            {
+              "name": "workoutDefinitionId",
+              "description": "The ID of the parent workout definition."
+            },
+            {
+              "name": "workoutExerciseId",
+              "description": "The unique identifier for the workout exercise."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/workout_logs/{workoutLogId}",
+        "definition": {
+          "entityName": "WorkoutLog",
+          "schema": {
+            "$ref": "#/backend/entities/WorkoutLog"
+          },
+          "description": "Records the completion of a workout session by a user. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user who completed this workout."
+            },
+            {
+              "name": "workoutLogId",
+              "description": "The unique identifier for the workout log."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/workout_logs/{workoutLogId}/exercise_performance_logs/{exercisePerformanceLogId}",
+        "definition": {
+          "entityName": "ExercisePerformanceLog",
+          "schema": {
+            "$ref": "#/backend/entities/ExercisePerformanceLog"
+          },
+          "description": "Details the performance of a specific exercise within a completed WorkoutLog. Includes denormalized 'userId' and 'workoutLogId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user who owns the parent workout log."
+            },
+            {
+              "name": "workoutLogId",
+              "description": "The ID of the parent workout log."
+            },
+            {
+              "name": "exercisePerformanceLogId",
+              "description": "The unique identifier for the exercise performance log."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/workout_logs/{workoutLogId}/exercise_performance_logs/{exercisePerformanceLogId}/workout_set_logs/{workoutSetLogId}",
+        "definition": {
+          "entityName": "WorkoutSetLog",
+          "schema": {
+            "$ref": "#/backend/entities/WorkoutSetLog"
+          },
+          "description": "Logs the details of a single set performed for an exercise within a WorkoutLog. Includes denormalized 'userId', 'workoutLogId', and 'exercisePerformanceLogId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user who owns the parent workout log."
+            },
+            {
+              "name": "workoutLogId",
+              "description": "The ID of the parent workout log."
+            },
+            {
+              "name": "exercisePerformanceLogId",
+              "description": "The ID of the parent exercise performance log."
+            },
+            {
+              "name": "workoutSetLogId",
+              "description": "The unique identifier for the workout set log."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/chat_history_entries/{chatHistoryEntryId}",
+        "definition": {
+          "entityName": "ChatHistoryEntry",
+          "schema": {
+            "$ref": "#/backend/entities/ChatHistoryEntry"
+          },
+          "description": "Stores a single message exchanged between the user and the AI coach. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user who participated in this chat."
+            },
+            {
+              "name": "chatHistoryEntryId",
+              "description": "The unique identifier for the chat history entry."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure for IronRank prioritizes Authorization Independence and clarity for robust security rules and efficient querying, adhering strictly to the core design principles. All user-specific data is organized hierarchically under a `/users/{userId}` root, enabling simple path-based authorization where the `userId` in the path must match `request.auth.uid`. This pattern naturally supports QAPs (Queries as Permissions) for private user data, as users can only read/write documents where the `{userId}` wildcard in the path matches their authenticated UID.\n\nTo achieve **Authorization Independence (CRITICAL)**, a comprehensive denormalization strategy is applied. For any subcollection document whose access depends on its parent's ownership or attributes, the `userId` (and potentially the immediate parent's ID for deeper nested collections) is explicitly copied and stored within the document itself. For example:\n*   Documents in `/users/{userId}/personal_records/{personalRecordId}` will contain `userId`.\n*   Documents in `/users/{userId}/training_plans/{trainingPlanId}/plan_blocks/{planBlockId}` will contain `userId` and `trainingPlanId`.\n*   Documents in `/users/{userId}/training_plans/{trainingPlanId}/workout_definitions/{workoutDefinitionId}/workout_exercises/{workoutExerciseId}` will contain `userId`, `trainingPlanId`, and `workoutDefinitionId`.\n\nThis ensures that security rules can always evaluate `request.auth.uid == resource.data.userId` (and similar checks for parent IDs) directly on the document being accessed, eliminating the need for slow, insecure, and non-atomic `get()` operations to check parent document data. This is crucial for maintaining data integrity during atomic writes (e.g., creating a `TrainingPlan` and its nested `PlanBlock` documents in a single batch operation).\n\n**Structural Segregation** is implemented by separating global, publicly readable entity definitions (e.g., `LiftDefinition`, `AchievementDefinition`) into top-level collections like `/lift_definitions` and `/achievement_definitions`. These collections have a homogeneous security posture (public read, admin write), simplifying their security rules. User-specific data, on the other hand, resides within their private `/users/{userId}` trees, ensuring that different access needs are met by distinct structural locations.\n\nFor **QAPs**, the hierarchical structure `/users/{userId}/...` inherently restricts `list` queries to the authenticated user's data, preventing unauthorized access to other users' information. Global definition collections (`/lift_definitions`, `/achievement_definitions`) are designed to be entirely public, so any `list` query on them is secure by design. There are no explicit 'collaborative' data entities or global 'roles' mentioned in the requirements, so the standard 'Membership Map' or 'Global Roles (DBAC)' patterns are not directly applied, but the principles of explicit database-backed authorization are fully maintained through the embedded `userId` fields."
+  }
+}

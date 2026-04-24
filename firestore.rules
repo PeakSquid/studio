@@ -1,0 +1,245 @@
+/**
+ * IronRank Security Rules
+ * 
+ * Core Philosophy:
+ * This ruleset implements a strict user-ownership model where all private user data is 
+ * isolated within a unique path (/users/{userId}). Authorization is primarily path-based, 
+ * leveraging the authenticated user's UID to grant access to their specific data tree.
+ * 
+ * Data Structure:
+ * - /users/{userId}: The root document for a user's profile.
+ * - /users/{userId}/...: Subcollections containing personal records, training plans, 
+ *   workout logs, and chat history.
+ * - /lift_definitions: Global, public collection of exercise types.
+ * - /achievement_definitions: Global, public collection of unlockable achievements.
+ * 
+ * Key Security Decisions:
+ * - Ownership Enforcement: All writes and reads for user-specific data require 
+ *   the path's {userId} to match the requester's UID.
+ * - Public Data: Lift and achievement definitions are globally readable but 
+ *   writable only by administrative processes (currently locked to prevent unauthorized changes).
+ * - Denormalization: While rules primarily use path-based authorization, 
+ *   relational fields (like userId) are validated on creation to ensure data 
+ *   consistency with the storage path.
+ * - Prototyping Flexibility: Logic enforces "who" can access data, but does 
+ *   not restrict the "shape" (schema) of the data being written, allowing for 
+ *   rapid iterative development.
+ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper Functions ---
+
+    /** Checks if the requester is authenticated. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** Checks if the requester's UID matches the provided userId. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** Checks if a document exists and the requester is the owner. */
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
+    }
+
+    /** Validates that a field in the incoming data matches a value and remains immutable. */
+    function isFieldImmutable(field) {
+      return request.resource.data[field] == resource.data[field];
+    }
+
+    // --- Global Collections ---
+
+    /**
+     * @description Publicly readable definitions for exercises.
+     * @path /lift_definitions/{liftDefinitionId}
+     * @allow (get) any authenticated user.
+     * @deny (write) any user; administrative update only.
+     * @principle Structural Segregation for public/global metadata.
+     */
+    match /lift_definitions/{liftDefinitionId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false; // TODO: Add admin role check once roles are defined.
+    }
+
+    /**
+     * @description Publicly readable definitions for achievements.
+     * @path /achievement_definitions/{achievementDefinitionId}
+     * @allow (get) any authenticated user.
+     * @deny (write) any user; administrative update only.
+     * @principle Structural Segregation for public/global metadata.
+     */
+    match /achievement_definitions/{achievementDefinitionId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false; // TODO: Add admin role check once roles are defined.
+    }
+
+    // --- User-Specific Root and Subcollections ---
+
+    match /users/{userId} {
+      
+      /**
+       * @description User profile settings and fitness statistics.
+       * @path /users/{userId}
+       * @allow (create) if the user is creating their own profile with a matching ID.
+       * @deny (update) if a user tries to modify another user's profile.
+       * @principle Self-Creation and Ownership pattern.
+       */
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update, delete: if isExistingOwner(userId) && isFieldImmutable('id');
+
+      /**
+       * @description Tracks muscle group activity for the user's current week.
+       * @path /users/{userId}/weekly_muscle_activities/{id}
+       * @allow (list) only the owner of the user tree.
+       * @deny (create) if the internal userId field doesn't match the path.
+       * @principle Relational integrity and path-based authorization.
+       */
+      match /weekly_muscle_activities/{id} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && isFieldImmutable('userId');
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Personal records achieved by the user.
+       * @path /users/{userId}/personal_records/{id}
+       * @allow (create) if owner provides matching userId in document.
+       * @deny (delete) if user is not the owner of the resource.
+       * @principle Ownership pattern with relational validation.
+       */
+      match /personal_records/{id} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && isFieldImmutable('userId');
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Achievements unlocked by the user.
+       * @path /users/{userId}/user_achievements/{id}
+       * @allow (create) if owner provides matching userId in document.
+       * @principle Ownership pattern.
+       */
+      match /user_achievements/{id} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && isFieldImmutable('userId');
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description AI-generated training programs.
+       * @path /users/{userId}/training_plans/{planId}
+       * @allow (create) if owner provides matching userId in document.
+       * @principle Hierarchical data organization.
+       */
+      match /training_plans/{planId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && isFieldImmutable('userId');
+        allow delete: if isExistingOwner(userId);
+
+        /**
+         * @description Blocks/phases within a training plan.
+         * @path /users/{userId}/training_plans/{planId}/plan_blocks/{id}
+         */
+        match /plan_blocks/{id} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.trainingPlanId == planId;
+          allow update: if isExistingOwner(userId) && isFieldImmutable('trainingPlanId');
+          allow delete: if isExistingOwner(userId);
+        }
+
+        /**
+         * @description Goal targets for a training plan.
+         * @path /users/{userId}/training_plans/{planId}/plan_goals/{id}
+         */
+        match /plan_goals/{id} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.trainingPlanId == planId;
+          allow update: if isExistingOwner(userId) && isFieldImmutable('trainingPlanId');
+          allow delete: if isExistingOwner(userId);
+        }
+
+        /**
+         * @description Blueprint for a specific workout session within a plan.
+         * @path /users/{userId}/training_plans/{planId}/workout_definitions/{id}
+         */
+        match /workout_definitions/{id} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId);
+          allow update: if isExistingOwner(userId);
+          allow delete: if isExistingOwner(userId);
+
+          /**
+           * @description Exercises within a workout definition.
+           * @path /users/{userId}/training_plans/{planId}/workout_definitions/{defId}/workout_exercises/{id}
+           */
+          match /workout_exercises/{id} {
+            allow get, list: if isOwner(userId);
+            allow create: if isOwner(userId);
+            allow update: if isExistingOwner(userId);
+            allow delete: if isExistingOwner(userId);
+          }
+        }
+      }
+
+      /**
+       * @description Completed workout session logs.
+       * @path /users/{userId}/workout_logs/{logId}
+       * @allow (list) owner can view their workout history.
+       * @principle Ownership pattern.
+       */
+      match /workout_logs/{logId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && isFieldImmutable('userId');
+        allow delete: if isExistingOwner(userId);
+
+        /**
+         * @description Performance details for a specific lift within a workout.
+         * @path /users/{userId}/workout_logs/{logId}/exercise_performance_logs/{id}
+         */
+        match /exercise_performance_logs/{id} { // This 'id' refers to the exercisePerformanceLogId
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.workoutLogId == logId;
+          allow update: if isExistingOwner(userId) && isFieldImmutable('workoutLogId');
+          allow delete: if isExistingOwner(userId);
+
+          /**
+           * @description Individual set details for an exercise.
+           * @path /users/{userId}/workout_logs/{logId}/exercise_performance_logs/{perfId}/workout_set_logs/{id}
+           */
+          match /workout_set_logs/{id} {
+            allow get, list: if isOwner(userId);
+            // FIX: Changed 'perfId' to 'id' as 'id' is the wildcard defined for the parent 'exercise_performance_logs' document.
+            allow create: if isOwner(userId) && request.resource.data.exercisePerformanceLogId == id;
+            allow update: if isExistingOwner(userId) && isFieldImmutable('exercisePerformanceLogId');
+            allow delete: if isExistingOwner(userId);
+          }
+        }
+      }
+
+      /**
+       * @description User's chat interactions with the AI coach.
+       * @path /users/{userId}/chat_history_entries/{id}
+       * @allow (get) owner can read their own messages.
+       * @deny (list) anyone except the owner.
+       * @principle Authorization Independence via path and internal userId field.
+       */
+      match /chat_history_entries/{id} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && isFieldImmutable('userId');
+        allow delete: if isExistingOwner(userId);
+      }
+    }
+  }
+}
