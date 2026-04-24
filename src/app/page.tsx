@@ -12,11 +12,13 @@ import TabNavigation from '@/components/iron/TabNavigation';
 import WorkoutModal from '@/components/iron/WorkoutModal';
 import PRLogModal from '@/components/iron/PRLogModal';
 import Onboarding from '@/components/iron/Onboarding';
+import AuthWrapper from '@/components/iron/AuthWrapper';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export default function IronRankApp() {
-  const { state, updateState, isLoaded } = useIronState();
+function IronRankApp() {
+  const { state, updateState, isLoaded, isSyncing } = useIronState();
   const [activeTab, setActiveTab] = useState('home');
   const [isWorkoutOpen, setIsWorkoutOpen] = useState(false);
   const [isPRLogOpen, setIsPRLogOpen] = useState(false);
@@ -37,12 +39,12 @@ export default function IronRankApp() {
 
   const renderTab = () => {
     switch (activeTab) {
-      case 'home': return <HomeTab state={state} onStartWorkout={() => setIsWorkoutOpen(true)} updateState={updateState} />;
+      case 'home': return <HomeTab state={state} onStartWorkout={() => setIsWorkoutOpen(true)} updateState={updateState} isSyncing={isSyncing} />;
       case 'lifts': return <LiftsTab state={state} updateState={updateState} />;
       case 'coach': return <CoachTab state={state} updateState={updateState} />;
       case 'achievements': return <AchievementsTab state={state} />;
       case 'plan': return <PlanTab state={state} />;
-      default: return <HomeTab state={state} onStartWorkout={() => setIsWorkoutOpen(true)} updateState={updateState} />;
+      default: return <HomeTab state={state} onStartWorkout={() => setIsWorkoutOpen(true)} updateState={updateState} isSyncing={isSyncing} />;
     }
   };
 
@@ -83,5 +85,15 @@ export default function IronRankApp() {
         updateState={updateState}
       />
     </div>
+  );
+}
+
+export default function RootPage() {
+  return (
+    <FirebaseClientProvider>
+      <AuthWrapper>
+        <IronRankApp />
+      </AuthWrapper>
+    </FirebaseClientProvider>
   );
 }

@@ -1,8 +1,11 @@
 
-import { useState, useEffect } from 'react';
-import { IronState } from '@/types/iron';
+'use client';
 
-const STORAGE_KEY = 'ironrank_state_v6'; // Incremented for new feature support
+import { useState, useEffect, useMemo } from 'react';
+import { IronState } from '@/types/iron';
+import { useFirestore, useUser, useDoc } from '@/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const DEFAULT_STATE: IronState = {
   lifts: {
@@ -29,31 +32,59 @@ const DEFAULT_STATE: IronState = {
 };
 
 export function useIronState() {
+  const { user, isUserLoading } = useUser();
+  const db = useFirestore();
+  
+  const userDocRef = useMemo(() => {
+    if (!db || !user) return null;
+    return doc(db, 'users', user.uid);
+  }, [db, user]);
+
+  const { data: remoteData, isLoading: isRemoteLoading } = useDoc(userDocRef);
+  
   const [state, setState] = useState<IronState>(DEFAULT_STATE);
   const [isLoaded, setIsLoaded] = useState(false);
 
+  // Initial load from remote or local fallback
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setState({ ...DEFAULT_STATE, ...parsed });
-      } catch (e) {
-        console.error('Failed to parse state', e);
+    if (!isUserLoading && !isRemoteLoading) {
+      if (remoteData) {
+        setState({ ...DEFAULT_STATE, ...remoteData });
+      } else {
+        const saved = localStorage.getItem('ironrank_state_v7');
+        if (saved) {
+          try {
+            setState({ ...DEFAULT_STATE, ...JSON.parse(saved) });
+          } catch (e) {
+            console.error('Local state parse failed', e);
+          }
+        }
       }
+      setIsLoaded(true);
     }
-    setIsLoaded(true);
-  }, []);
+  }, [remoteData, isRemoteLoading, isUserLoading]);
 
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }
-  }, [state, isLoaded]);
-
+  // Sync updates to remote (non-blocking) and local
   const updateState = (updater: (prev: IronState) => IronState) => {
-    setState(updater);
+    setState((prev) => {
+      const next = updater(prev);
+      
+      // Save local for offline
+      localStorage.setItem('ironrank_state_v7', JSON.stringify(next));
+      
+      // Sync to Firestore if logged in
+      if (userDocRef) {
+        updateDocumentNonBlocking(userDocRef, next);
+      }
+      
+      return next;
+    });
   };
 
-  return { state, updateState, isLoaded };
+  return { 
+    state, 
+    updateState, 
+    isLoaded: isLoaded && !isUserLoading,
+    isSyncing: isRemoteLoading
+  };
 }

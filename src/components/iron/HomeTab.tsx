@@ -1,22 +1,25 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import { IronState } from '@/types/iron';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Settings, Zap, Activity, TrendingUp, Clock } from 'lucide-react';
+import { Settings, Zap, Clock, Cloud } from 'lucide-react';
 import { MUSCLES } from '@/lib/constants';
 import { getOverallRank, getMuscleRank, getOverallRankProgress } from '@/lib/iron-utils';
 import SettingsModal from './SettingsModal';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { cn } from '@/lib/utils';
 
 type HomeTabProps = {
   state: IronState;
   onStartWorkout: () => void;
   updateState: (updater: (prev: IronState) => IronState) => void;
+  isSyncing?: boolean;
 };
 
-export default function HomeTab({ state, onStartWorkout, updateState }: HomeTabProps) {
+export default function HomeTab({ state, onStartWorkout, updateState, isSyncing }: HomeTabProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [now, setNow] = useState(new Date());
   const rank = getOverallRank(state.lifts);
@@ -48,7 +51,14 @@ export default function HomeTab({ state, onStartWorkout, updateState }: HomeTabP
     <div className="p-6 pt-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-40">
       <header className="flex items-end justify-between mb-8">
         <div>
-          <p className="eyebrow">{name} · {rank} Class</p>
+          <div className="flex items-center gap-2 mb-1">
+            <p className="eyebrow">{name} · {rank} Class</p>
+            {isSyncing ? (
+              <Cloud className="w-3 h-3 text-accent animate-pulse" />
+            ) : (
+              <Cloud className="w-3 h-3 text-accent/40" />
+            )}
+          </div>
           <h1 className="hero-title">Iron<span className="text-accent">Rank</span></h1>
         </div>
         <button 
@@ -58,6 +68,39 @@ export default function HomeTab({ state, onStartWorkout, updateState }: HomeTabP
           <Settings className="w-5 h-5" />
         </button>
       </header>
+
+      {/* Activity Matrix */}
+      <section className="mb-6">
+        <h3 className="section-header">Consistency Grid</h3>
+        <Card className="p-4 bg-secondary/20 border-border">
+          <div className="dot-grid">
+            {state.activity.map((lvl, i) => (
+              <div 
+                key={i} 
+                className={cn(
+                  "dot",
+                  lvl === 1 && "dot-half",
+                  lvl === 2 && "dot-active"
+                )}
+                title={`Day ${i + 1}: ${lvl === 2 ? 'High Effort' : lvl === 1 ? 'Low Effort' : 'Rest'}`}
+              />
+            ))}
+          </div>
+          <div className="mt-3 flex justify-between items-center">
+            <div className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Last 21 Days</div>
+            <div className="flex gap-2 items-center">
+              <div className="flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-[1px] bg-secondary" />
+                <span className="text-[8px] font-bold text-muted-foreground uppercase">Rest</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-[1px] bg-accent" />
+                <span className="text-[8px] font-bold text-muted-foreground uppercase">Work</span>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </section>
 
       {/* Rank Progress */}
       <Card className="p-5 mb-6 bg-secondary border-border overflow-hidden relative group">
