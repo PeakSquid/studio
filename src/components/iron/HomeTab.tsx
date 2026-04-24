@@ -1,12 +1,13 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
 import { IronState } from '@/types/iron';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Settings, Zap, Clock, Cloud, Target, ChevronRight, Volume2, Loader2, Square } from 'lucide-react';
+import { Settings, Zap, Clock, Cloud, Target, ChevronRight, Volume2, Loader2, Square, Brain } from 'lucide-react';
 import { MUSCLES } from '@/lib/constants';
-import { getOverallRank, getOverallRankProgress, getNearestMilestone } from '@/lib/iron-utils';
+import { getOverallRank, getOverallRankProgress, getNearestMilestone, getCNSFatigue } from '@/lib/iron-utils';
 import { getTacticalVoice } from '@/ai/flows/ai-coach-voice-flow';
 import SettingsModal from './SettingsModal';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
@@ -30,6 +31,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
   const { nextRank, progress, remaining } = getOverallRankProgress(state.lifts);
   const milestone = getNearestMilestone(state.lifts);
   const name = state.settings.name || 'Athlete';
+  const cnsLoad = getCNSFatigue(state.streak, state.activity);
   
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
@@ -48,7 +50,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
 
     setIsBriefing(true);
     try {
-      const text = `Athlete ${name}, standing by for briefing. Current rank: ${rank}. You have completed ${state.workoutsCompleted} sessions. ${milestone ? `Primary tactical target: ${milestone.name}. You are ${milestone.toNext} pounds away from ${milestone.nextLabel} rank.` : 'All primary objectives secured.'} Initializing workout protocol. Good luck.`;
+      const text = `Athlete ${name}, standing by for briefing. Current rank: ${rank}. Neural load is at ${cnsLoad} percent. You have completed ${state.workoutsCompleted} sessions. ${milestone ? `Primary tactical target: ${milestone.name}. You are ${milestone.toNext} pounds away from ${milestone.nextLabel} rank.` : 'All primary objectives secured.'} Initializing workout protocol. Good luck.`;
       const result = await getTacticalVoice({ text });
       setAudioUrl(result.media);
       setTimeout(() => {
@@ -147,6 +149,24 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
         </Card>
       </section>
 
+      {/* Vitals Grid */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <Card className="p-4 bg-secondary/30 border-border">
+          <p className="eyebrow flex items-center gap-2"><Zap className="w-3 h-3 text-accent" /> Streak</p>
+          <div className="flex items-center gap-2">
+            <span className="font-headline text-3xl">{state.streak}</span>
+            <span className="text-[10px] text-muted-foreground font-bold uppercase">Days</span>
+          </div>
+        </Card>
+        <Card className="p-4 bg-secondary/30 border-border">
+          <p className="eyebrow flex items-center gap-2"><Brain className="w-3 h-3 text-accent" /> Neural Load</p>
+          <div className="flex items-center gap-2">
+            <span className="font-headline text-3xl">{cnsLoad}</span>
+            <span className="text-[10px] text-muted-foreground font-bold uppercase">%</span>
+          </div>
+        </Card>
+      </div>
+
       {/* Rank Progression Card */}
       <Card className="p-5 mb-6 bg-secondary border-border overflow-hidden relative group">
         <div className="flex justify-between items-end mb-3">
@@ -165,43 +185,6 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
           <span>{nextRank}</span>
         </div>
       </Card>
-
-      {/* Nearest Milestone Logic */}
-      {milestone && (
-        <Card className="p-4 mb-6 bg-[#1C2500] border border-[#2E3D00] flex items-center justify-between group cursor-default">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
-              <Target className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-[9px] font-black uppercase tracking-widest text-accent/60">Tactical Target</div>
-              <div className="text-xs font-bold text-accent">{milestone.name} <span className="text-muted-foreground">+{milestone.toNext}lb for {milestone.nextLabel}</span></div>
-            </div>
-          </div>
-          <ChevronRight className="w-4 h-4 text-accent/40 group-hover:text-accent transition-colors" />
-        </Card>
-      )}
-
-      {/* Vitals Grid */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <Card className="p-4 bg-secondary/30 border-border">
-          <p className="eyebrow">Streak</p>
-          <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4 text-accent fill-current" />
-            <span className="font-headline text-3xl">{state.streak}</span>
-          </div>
-        </Card>
-        <Card className="p-4 bg-secondary/30 border-border overflow-hidden">
-          <p className="eyebrow">Tonnage Trend</p>
-          <div className="h-8 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={volumeData.length > 0 ? volumeData : [{val:0},{val:5},{val:3},{val:8}]}>
-                <Line type="monotone" dataKey="val" stroke="hsl(var(--accent))" strokeWidth={3} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
 
       {/* Biological Recovery Status */}
       <section>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -5,10 +6,10 @@ import { IronState } from '@/types/iron';
 import { THRESHOLDS } from '@/lib/constants';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, CartesianGrid, Tooltip, LineChart, Line } from 'recharts';
-import { getLiftRank, getLiftProgress, getOverallRank } from '@/lib/iron-utils';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
+import { getLiftRank, getLiftProgress, getOverallRank, getRadarData } from '@/lib/iron-utils';
 import { generateSpiritTotem } from '@/ai/flows/generate-totem-flow';
-import { Loader2, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Sparkles, Image as ImageIcon, TrendingUp, Scale } from 'lucide-react';
 import Image from 'next/image';
 
 type LiftsTabProps = {
@@ -20,19 +21,8 @@ export default function LiftsTab({ state }: LiftsTabProps) {
   const [isGeneratingTotem, setIsGeneratingTotem] = useState(false);
   const [totem, setTotem] = useState<{ url: string; desc: string } | null>(null);
 
-  const chartData = Object.entries(state.lifts).map(([name, data]) => ({
-    name: name.split(' ')[0],
-    fullName: name,
-    weight: data.pr,
-    rank: getLiftRank(name, data.pr)
-  }));
-
-  const rankColors: Record<string, string> = {
-    Bronze: '#CD7F32',
-    Silver: '#C0C0C0',
-    Gold: '#FFD700',
-    Elite: '#A855F7'
-  };
+  const radarData = getRadarData(state.lifts);
+  const weightHistory = state.settings.weightHistory || [];
 
   const handleGenerateTotem = async () => {
     setIsGeneratingTotem(true);
@@ -96,49 +86,56 @@ export default function LiftsTab({ state }: LiftsTabProps) {
         </Card>
       </section>
 
-      {/* Distribution Chart */}
+      {/* Radar Chart Section */}
       <section className="mb-10">
-        <h3 className="section-header">Max Capacity Profile</h3>
-        <Card className="p-4 bg-secondary/30 border-border h-[240px]">
+        <h3 className="section-header">Strength Balance HUD</h3>
+        <Card className="p-4 bg-secondary/30 border-border h-[300px] flex items-center justify-center">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-              <XAxis 
-                dataKey="name" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{ fontSize: 10, fontWeight: 800, fill: '#666' }} 
+            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+              <PolarGrid stroke="rgba(255,255,255,0.1)" />
+              <PolarAngleAxis dataKey="subject" tick={{ fill: '#666', fontSize: 10, fontWeight: 'bold' }} />
+              <Radar
+                name="Athlete"
+                dataKey="A"
+                stroke="hsl(var(--accent))"
+                fill="hsl(var(--accent))"
+                fillOpacity={0.6}
               />
-              <YAxis 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{ fontSize: 10, fill: '#666' }} 
-              />
-              <Tooltip 
-                cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                content={({ active, payload }) => {
-                  if (active && payload && payload.length) {
-                    const data = payload[0].payload;
-                    return (
-                      <div className="bg-popover border border-border p-3 rounded-xl shadow-2xl">
-                        <div className="text-[10px] font-black uppercase text-muted-foreground">{data.fullName}</div>
-                        <div className="font-headline text-2xl leading-none text-accent">{data.weight} lb</div>
-                        <div className="text-[9px] font-bold uppercase mt-1 px-1.5 py-0.5 rounded inline-block" style={{ backgroundColor: rankColors[data.rank], color: data.rank === 'Silver' || data.rank === 'Gold' ? '#000' : '#fff' }}>
-                          {data.rank} Rank
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
-              <Bar dataKey="weight" radius={[4, 4, 0, 0]}>
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={rankColors[entry.rank]} fillOpacity={0.8} />
-                ))}
-              </Bar>
-            </BarChart>
+            </RadarChart>
           </ResponsiveContainer>
+        </Card>
+      </section>
+
+      {/* Bodyweight Trend */}
+      <section className="mb-10">
+        <h3 className="section-header">Mass Telemetry</h3>
+        <Card className="p-5 bg-secondary/40 border-border">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-2">
+              <Scale className="w-4 h-4 text-accent" />
+              <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Weight Trend</span>
+            </div>
+            <div className="text-lg font-headline">{state.settings.bodyweight} {state.settings.unit}</div>
+          </div>
+          <div className="h-[120px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={weightHistory.length > 0 ? weightHistory : [{weight: 180}, {weight: 182}, {weight: 181}, {weight: 184}]}>
+                <Line type="monotone" dataKey="weight" stroke="hsl(var(--accent))" strokeWidth={3} dot={false} />
+                <Tooltip 
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-popover border border-border p-2 rounded-lg text-[10px] font-black uppercase">
+                          {payload[0].value} lb
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </Card>
       </section>
 
@@ -202,30 +199,6 @@ export default function LiftsTab({ state }: LiftsTabProps) {
           })}
         </div>
       </section>
-
-      <section className="mb-10">
-        <h3 className="section-header">Rank Standards</h3>
-        <Card className="p-6 bg-secondary/30 border-border space-y-6">
-          <RankTier icon="🥉" name="Bronze" color="#CD7F32" desc="Base Tier. Focus on structural integrity and fundamental movement mechanics." />
-          <RankTier icon="🥈" name="Silver" color="#C0C0C0" desc="Intermediate Tier. Consistent linear progression and metabolic adaptation." />
-          <RankTier icon="🥇" name="Gold" color="#FFD700" desc="Advanced Tier. Significant neurological efficiency and force production." />
-          <RankTier icon="⚡" name="Elite" color="#A855F7" desc="Supreme Tier. Peak human strength standards for non-competitive lifters." />
-        </Card>
-      </section>
-    </div>
-  );
-}
-
-function RankTier({ icon, name, color, desc }: { icon: string; name: string; color: string; desc: string }) {
-  return (
-    <div className="flex items-start gap-4">
-      <div className="w-12 h-12 rounded-2xl bg-background border border-border flex items-center justify-center text-2xl flex-shrink-0">
-        {icon}
-      </div>
-      <div>
-        <div className="font-headline text-xl leading-none mb-1" style={{ color }}>{name}</div>
-        <div className="text-xs text-muted-foreground leading-relaxed">{desc}</div>
-      </div>
     </div>
   );
 }

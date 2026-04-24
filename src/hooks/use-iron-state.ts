@@ -24,7 +24,7 @@ const DEFAULT_STATE: IronState = {
   workoutsCompleted: 0,
   plan: null,
   unlockedAchievements: {},
-  settings: { unit: 'lb', name: '', bodyweight: 0, theme: 'iron' },
+  settings: { unit: 'lb', name: '', bodyweight: 0, weightHistory: [], theme: 'iron' },
   muscleRecovery: {},
   totalVolume: 0,
   volumeHistory: [],

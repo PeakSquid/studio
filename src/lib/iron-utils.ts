@@ -1,3 +1,4 @@
+
 import { THRESHOLDS, MUSCLES } from './constants';
 import { IronState, LiftData } from '@/types/iron';
 
@@ -109,4 +110,22 @@ export function calculatePlates(targetWeight: number, barWeight: number = 45) {
   }
 
   return result;
+}
+
+export function getRadarData(lifts: Record<string, LiftData>) {
+  return Object.entries(lifts).map(([name, data]) => {
+    const tiers = THRESHOLDS[name as keyof typeof THRESHOLDS] || [];
+    const eliteMax = tiers[tiers.length - 1]?.min || 500;
+    return {
+      subject: name.split(' ')[0],
+      A: Math.min(Math.round((data.pr / eliteMax) * 100), 100),
+      fullMark: 100,
+    };
+  });
+}
+
+export function getCNSFatigue(streak: number, activity: number[]) {
+  const recentWorkouts = activity.slice(-7).filter(a => a === 2).length;
+  let load = recentWorkouts * 15 + streak * 5;
+  return Math.min(load, 100);
 }

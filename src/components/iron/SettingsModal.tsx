@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Button } from '@/components/ui/button';
-import { X, User, Weight, ShieldCheck, Palette } from 'lucide-react';
+import { X, User, Weight, ShieldCheck, Palette, Scale } from 'lucide-react';
 
 type SettingsModalProps = {
   isOpen: boolean;
@@ -23,7 +23,26 @@ export default function SettingsModal({ isOpen, onClose, state, updateState }: S
   };
 
   const handleWeightChange = (val: string) => {
-    updateState(prev => ({ ...prev, settings: { ...prev.settings, bodyweight: parseInt(val) || 0 } }));
+    const w = parseInt(val) || 0;
+    updateState(prev => {
+      const history = [...(prev.settings.weightHistory || [])];
+      // Only add to history if it's a new day or different weight
+      const lastEntry = history[history.length - 1];
+      const today = new Date().toISOString().split('T')[0];
+      
+      if (!lastEntry || lastEntry.date !== today || lastEntry.weight !== w) {
+        history.push({ date: today, weight: w });
+      }
+
+      return {
+        ...prev,
+        settings: {
+          ...prev.settings,
+          bodyweight: w,
+          weightHistory: history.slice(-30)
+        }
+      };
+    });
   };
 
   const handleUnitChange = (val: 'lb' | 'kg') => {
@@ -63,9 +82,22 @@ export default function SettingsModal({ isOpen, onClose, state, updateState }: S
                 className="h-12 bg-secondary border-border rounded-xl focus:ring-accent"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="weight" className="text-xs font-bold text-muted-foreground flex items-center gap-2">
+                <Scale className="w-3 h-3" /> Bodyweight ({state.settings.unit})
+              </Label>
+              <Input 
+                id="weight"
+                type="number"
+                value={state.settings.bodyweight}
+                onChange={(e) => handleWeightChange(e.target.value)}
+                placeholder="Current Mass"
+                className="h-12 bg-secondary border-border rounded-xl focus:ring-accent"
+              />
+            </div>
           </div>
 
-          {/* Vitals Section */}
+          {/* Appearance Section */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-[10px] font-black uppercase text-muted-foreground tracking-widest">
               <Palette className="w-3 h-3" /> Appearance

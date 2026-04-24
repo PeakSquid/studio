@@ -34,6 +34,7 @@ export type IronState = {
     unit: 'lb' | 'kg';
     name: string;
     bodyweight: number;
+    weightHistory?: { date: string; weight: number }[];
     theme: 'iron' | 'stealth';
   };
   muscleRecovery: Record<string, string>; // muscle -> ISO timestamp of expected full recovery
