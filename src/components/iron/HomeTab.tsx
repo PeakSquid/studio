@@ -11,7 +11,6 @@ import { getTacticalVoice } from '@/ai/flows/ai-coach-voice-flow';
 import { getDailyTacticalTip } from '@/ai/flows/tactical-tip-flow';
 import SettingsModal from './SettingsModal';
 import { cn } from '@/lib/utils';
-import { LineChart, Line, ResponsiveContainer } from 'recharts';
 
 type HomeTabProps = {
   state: IronState;
@@ -227,19 +226,26 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
         <h3 className="section-header">Biological Status</h3>
         <Card className="p-8 glass-card flex flex-col items-center relative overflow-hidden">
           <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
-          <div className="relative w-full max-w-[220px] mb-12 animate-float">
-            <div className="absolute inset-0 bg-accent/5 blur-3xl rounded-full" />
-            <svg viewBox="0 0 100 150" className="w-full h-auto relative z-10" role="img" aria-label="Muscle Recovery Map">
-              <path d="M30 40 Q50 35 70 40 L65 55 Q50 60 35 55 Z" className={`muscle-map-path ${getRecoveryInfo('Chest').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
-              <circle cx="25" cy="45" r="8" className={`muscle-map-path ${getRecoveryInfo('Shoulders').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
-              <circle cx="75" cy="45" r="8" className={`muscle-map-path ${getRecoveryInfo('Shoulders').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
-              <path d="M20 55 L15 90 L25 90 L28 55 Z" className={`muscle-map-path ${getRecoveryInfo('Arms').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
-              <path d="M80 55 L85 90 L75 90 L72 55 Z" className={`muscle-map-path ${getRecoveryInfo('Arms').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
-              <path d="M35 95 L30 140 L45 140 L48 95 Z" className={`muscle-map-path ${getRecoveryInfo('Legs').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
-              <path d="M65 95 L70 140 L55 140 L52 95 Z" className={`muscle-map-path ${getRecoveryInfo('Legs').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
-            </svg>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] border border-accent/5 rounded-full animate-pulse-soft pointer-events-none" />
-          </div>
+          
+          {/* Hydration Guard for heavy SVG component */}
+          {isHydrated ? (
+            <div className="relative w-full max-w-[220px] mb-12 animate-float">
+              <div className="absolute inset-0 bg-accent/5 blur-3xl rounded-full" />
+              <svg viewBox="0 0 100 150" className="w-full h-auto relative z-10" role="img" aria-label="Muscle Recovery Map">
+                <path d="M30 40 Q50 35 70 40 L65 55 Q50 60 35 55 Z" className={`muscle-map-path ${getRecoveryInfo('Chest').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+                <circle cx="25" cy="45" r="8" className={`muscle-map-path ${getRecoveryInfo('Shoulders').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+                <circle cx="75" cy="45" r="8" className={`muscle-map-path ${getRecoveryInfo('Shoulders').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+                <path d="M20 55 L15 90 L25 90 L28 55 Z" className={`muscle-map-path ${getRecoveryInfo('Arms').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+                <path d="M80 55 L85 90 L75 90 L72 55 Z" className={`muscle-map-path ${getRecoveryInfo('Arms').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+                <path d="M35 95 L30 140 L45 140 L48 95 Z" className={`muscle-map-path ${getRecoveryInfo('Legs').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+                <path d="M65 95 L70 140 L55 140 L52 95 Z" className={`muscle-map-path ${getRecoveryInfo('Legs').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+              </svg>
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] border border-accent/5 rounded-full animate-pulse-soft pointer-events-none" />
+            </div>
+          ) : (
+            <div className="w-full max-w-[220px] aspect-[100/150] mb-12 bg-white/5 rounded-[40px] animate-pulse" />
+          )}
+
           <div className="grid grid-cols-1 gap-3 w-full relative z-10">
             {Object.keys(MUSCLES).map(m => {
               const info = getRecoveryInfo(m);

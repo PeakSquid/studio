@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { IronState } from '@/types/iron';
 import { THRESHOLDS } from '@/lib/constants';
 import { Card } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, Line
 import { getLiftRank, getLiftProgress, getOverallRank, getRadarData } from '@/lib/iron-utils';
 import { generateSpiritTotem } from '@/ai/flows/generate-totem-flow';
 import { generateHypeVideo } from '@/ai/flows/generate-hype-video-flow';
-import { Loader2, Sparkles, Image as ImageIcon, Scale, History, Target, Zap, Play, Film } from 'lucide-react';
+import { Loader2, Sparkles, ImageIcon, Scale, History, Target, Zap, Play, Film } from 'lucide-react';
 import Image from 'next/image';
 
 type LiftsTabProps = {
@@ -22,6 +22,11 @@ export default function LiftsTab({ state }: LiftsTabProps) {
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [totem, setTotem] = useState<{ url: string; desc: string } | null>(null);
   const [hypeVideo, setHypeVideo] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   const radarData = useMemo(() => getRadarData(state.lifts), [state.lifts]);
   const weightHistory = useMemo(() => state.settings.weightHistory || [], [state.settings.weightHistory]);
@@ -139,19 +144,23 @@ export default function LiftsTab({ state }: LiftsTabProps) {
         <h3 className="section-header">Strength Balance Radar</h3>
         <Card className="p-6 glass-card h-[320px] flex items-center justify-center relative overflow-hidden group">
           <div className="absolute inset-0 bg-accent/[0.02] pointer-events-none" />
-          <ResponsiveContainer width="100%" height="100%">
-            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-              <PolarGrid stroke="rgba(255,255,255,0.08)" />
-              <PolarAngleAxis dataKey="subject" tick={{ fill: '#666', fontSize: 10, fontWeight: '900', letterSpacing: '2px' }} />
-              <Radar
-                name="Athlete"
-                dataKey="A"
-                stroke="hsl(var(--accent))"
-                fill="hsl(var(--accent))"
-                fillOpacity={0.4}
-              />
-            </RadarChart>
-          </ResponsiveContainer>
+          {isHydrated ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                <PolarGrid stroke="rgba(255,255,255,0.08)" />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: '#666', fontSize: 10, fontWeight: '900', letterSpacing: '2px' }} />
+                <Radar
+                  name="Athlete"
+                  dataKey="A"
+                  stroke="hsl(var(--accent))"
+                  fill="hsl(var(--accent))"
+                  fillOpacity={0.4}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="w-full h-full bg-white/5 rounded-full animate-pulse-soft" />
+          )}
         </Card>
       </section>
 
@@ -171,23 +180,27 @@ export default function LiftsTab({ state }: LiftsTabProps) {
             <div className="font-headline text-4xl italic tracking-tighter">{state.settings.bodyweight} <span className="text-xs font-sans not-italic text-muted-foreground">{state.settings.unit}</span></div>
           </div>
           <div className="h-[120px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={weightHistory.length > 0 ? weightHistory : [{weight: 180}, {weight: 182}, {weight: 181}, {weight: 184}]}>
-                <Line type="monotone" dataKey="weight" stroke="hsl(var(--accent))" strokeWidth={4} dot={false} strokeDasharray="6 6" />
-                <Tooltip 
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="bg-popover border border-border px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[2px] shadow-2xl">
-                          {payload[0].value} {state.settings.unit}
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {isHydrated ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={weightHistory.length > 0 ? weightHistory : [{weight: 180}, {weight: 182}, {weight: 181}, {weight: 184}]}>
+                  <Line type="monotone" dataKey="weight" stroke="hsl(var(--accent))" strokeWidth={4} dot={false} strokeDasharray="6 6" />
+                  <Tooltip 
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-popover border border-border px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[2px] shadow-2xl">
+                            {payload[0].value} {state.settings.unit}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="w-full h-full bg-white/5 rounded-xl animate-pulse" />
+            )}
           </div>
         </Card>
       </section>
@@ -214,7 +227,7 @@ export default function LiftsTab({ state }: LiftsTabProps) {
                     <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[3px] rank-${rank.toLowerCase()} shadow-xl border border-white/10`}>
                       {rank}
                     </span>
-                    {sparklineData.length > 1 && (
+                    {isHydrated && sparklineData.length > 1 && (
                       <div className="h-8 w-20 opacity-30 group-hover:opacity-60 transition-opacity">
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={sparklineData}>

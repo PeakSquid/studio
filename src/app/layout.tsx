@@ -14,8 +14,8 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'IronRank',
-  description: 'AI-Powered Weightlifting Rank & Progression',
+  title: 'IronRank | AI Weightlifting Rank & Progression',
+  description: 'Elite AI-powered biometric tracking for serious weightlifters. Monitor rank tiers, CNS fatigue, and neural adaptation.',
 };
 
 export default function RootLayout({
@@ -25,9 +25,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${bebasNeue.variable} ${dmSans.variable} dark`} suppressHydrationWarning>
-      <head>
-        {/* Fonts are now handled by next/font */}
-      </head>
       <body className="font-body antialiased bg-background text-foreground overflow-hidden h-screen w-screen" suppressHydrationWarning>
         {children}
       </body>
