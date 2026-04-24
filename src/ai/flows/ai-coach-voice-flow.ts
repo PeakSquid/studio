@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A flow that converts tactical coaching text into audio.
@@ -7,7 +6,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
-import wav from 'wav';
+import * as wav from 'wav';
 
 async function toWav(
   pcmData: Buffer,
@@ -16,7 +15,10 @@ async function toWav(
   sampleWidth = 2
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    const writer = new wav.Writer({
+    // @ts-ignore - handling potential CJS/ESM interop issues with wav package
+    const Writer = (wav.default ? wav.default.Writer : wav.Writer);
+    
+    const writer = new Writer({
       channels,
       sampleRate: rate,
       bitDepth: sampleWidth * 8,
@@ -24,7 +26,7 @@ async function toWav(
 
     let bufs = [] as any[];
     writer.on('error', reject);
-    writer.on('data', function (d) {
+    writer.on('data', function (d: any) {
       bufs.push(d);
     });
     writer.on('end', function () {
