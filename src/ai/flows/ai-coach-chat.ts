@@ -26,18 +26,6 @@ function getRank(lift: string, pr: number): string {
   return rank;
 }
 
-// Helper function from the client-side code to calculate overall rank.
-function overallRank(lifts: Record<string, { pr: number; reps: number }>): string {
-  const all = Object.entries(lifts).map(([l,d]) => getRank(l,d.pr));
-  const c: Record<string, number> = {Bronze:0,Silver:0,Gold:0,Elite:0};
-  all.forEach(r => c[r]++);
-  if (c.Elite >= 4) return 'Elite';
-  if (c.Gold >= 4) return 'Gold';
-  if (c.Silver >= 3) return 'Silver';
-  return 'Bronze';
-}
-
-
 // --- Schemas --- 
 
 const LiftDataSchema = z.object({
@@ -248,11 +236,12 @@ const aiCoachChatFlow = ai.defineFlow(
         userStats: userStats,
         chatHistory: chatHistory,
       },
-      model: 'googleai/gemini-2.5-flash',
     });
 
-    if (modelResponse.toolCalls && modelResponse.toolCalls.length > 0) {
-      const toolCall = modelResponse.toolCalls[0];
+    // Check for tool calls
+    const toolCalls = modelResponse.toolRequests;
+    if (toolCalls && toolCalls.length > 0) {
+      const toolCall = toolCalls[0];
 
       if (toolCall.name === generateWorkoutPlanTool.name) {
         const toolOutput = await generateWorkoutPlanTool.run({
@@ -266,8 +255,17 @@ const aiCoachChatFlow = ai.defineFlow(
           streak: input.streak,
           workoutsCompleted: input.workoutsCompleted,
         });
-        return { plan: toolOutput, reply: 'Your 12-week plan has been generated and saved! Head to the Plan tab to see the full program breakdown.' };
+        return { 
+          plan: toolOutput, 
+          reply: 'Your 12-week plan has been generated and saved! Head to the Plan tab to see the full program breakdown.' 
+        };
       }
+    }
+
+    // Return conversational output
+    const output = modelResponse.output;
+    if (output) {
+      return output;
     }
 
     return { reply: modelResponse.text };
