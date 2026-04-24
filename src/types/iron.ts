@@ -1,6 +1,7 @@
 export type LiftData = {
   pr: number;
   reps: number;
+  history?: { date: string; weight: number }[];
 };
 
 export type WorkoutPlan = {
@@ -31,6 +32,7 @@ export type IronState = {
     unit: 'lb' | 'kg';
     name: string;
     bodyweight: number;
+    theme: 'iron' | 'stealth';
   };
   weeklyMuscles: Record<string, number>;
   weekStart: string | null;

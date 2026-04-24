@@ -10,7 +10,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-// Helper function from the client-side code to calculate rank.
+// Helper function to calculate rank.
 function getRank(lift: string, pr: number): string {
   const THRESHOLDS: { [key: string]: { r: string; min: number }[] } = {
     'Bench Press':    [{r:'Bronze',min:0},{r:'Silver',min:185},{r:'Gold',min:275},{r:'Elite',min:350}],
@@ -74,6 +74,8 @@ const AICoachChatInputSchema = z.object({
   overallRank: z.string().describe('The user\'s overall rank (e.g., Bronze, Silver, Gold, Elite).'),
   streak: z.number().describe('The user\'s current workout streak in days.'),
   workoutsCompleted: z.number().describe('The total number of workouts completed by the user.'),
+  bodyweight: z.number().describe('User\'s bodyweight in lbs.'),
+  userName: z.string().describe('User\'s name for personalization.'),
   chatHistory: z.array(z.object({
     role: z.enum(['user', 'assistant']).describe('Role of the message sender. Can be "user" or "assistant".'),
     content: z.string().describe('Content of the chat message.'),
@@ -88,6 +90,8 @@ const AICoachPromptInputSchema = z.object({
     overallRank: z.string(),
     streak: z.number(),
     workoutsCompleted: z.number(),
+    bodyweight: z.number(),
+    userName: z.string(),
   }),
   chatHistory: z.string(),
 });
@@ -126,16 +130,16 @@ const generateWorkoutPlanTool = ai.defineTool(
     const plan = {
       totalWeeks: 12,
       blocks: [
-        {name: "Block 1 — Strength Foundation", desc: "Weeks 1-4 · 5x5 compounds, linear progression"},
-        {name: "Block 2 — Hypertrophy", desc: "Weeks 5-8 · 4x8-12, volume increase"},
-        {name: "Block 3 — Peaking", desc: "Weeks 9-12 · Heavy singles, PR attempts"}
+        {name: "Phase 1 — Hypertrophic Base", desc: "Weeks 1-4 · Focus on volume and structural balance. Higher reps (8-12)."},
+        {name: "Phase 2 — Strength & Power", desc: "Weeks 5-8 · Linear progression on main compounds. Reps down to 3-5."},
+        {name: "Phase 3 — Intensification", desc: "Weeks 9-12 · Heavy singles and doubles. Peaking for PR attempts."}
       ],
       schedule: {
-        "0": "rest", "1": "push", "2": "pull", "3": "legs", "4": "rest", "5": "push", "6": "legs"
+        "0": "rest", "1": "push", "2": "pull", "3": "legs", "4": "rest", "5": "full", "6": "rest"
       },
       workouts: [
         {
-          name: "Push Power", type: "push", focus: "Chest · Shoulders · Triceps", duration: 52, xp: 3,
+          name: "Push Protocol", type: "push", focus: "Chest · Shoulders · Triceps", duration: 52, xp: 3,
           exercises: [
             {name: "Bench Press", sets: 4, reps: "5", weight: Math.round(bp * 0.85)},
             {name: "Overhead Press", sets: 3, reps: "8", weight: Math.round(ohp * 0.8)},
@@ -145,7 +149,7 @@ const generateWorkoutPlanTool = ai.defineTool(
           ]
         },
         {
-          name: "Pull Strength", type: "pull", focus: "Back · Biceps", duration: 48, xp: 3,
+          name: "Pull Protocol", type: "pull", focus: "Back · Biceps", duration: 48, xp: 3,
           exercises: [
             {name: "Barbell Row", sets: 4, reps: "5", weight: Math.round(br * 0.85)},
             {name: "Pull-Up", sets: 3, reps: "6", weight: pu},
@@ -155,7 +159,7 @@ const generateWorkoutPlanTool = ai.defineTool(
           ]
         },
         {
-          name: "Leg Day", type: "legs", focus: "Quads · Hamstrings · Glutes", duration: 55, xp: 4,
+          name: "Leg Protocol", type: "legs", focus: "Quads · Hamstrings · Glutes", duration: 55, xp: 4,
           exercises: [
             {name: "Squat", sets: 4, reps: "5", weight: Math.round(sq * 0.85)},
             {name: "Romanian Deadlift", sets: 3, reps: "8", weight: Math.round(dl * 0.7)},
@@ -163,12 +167,21 @@ const generateWorkoutPlanTool = ai.defineTool(
             {name: "Leg Curl", sets: 3, reps: "12", weight: 80},
             {name: "Calf Raise", sets: 4, reps: "15", weight: 135}
           ]
+        },
+        {
+          name: "Full Body Tactical", type: "full", focus: "Full Body Hypertrophy", duration: 60, xp: 5,
+          exercises: [
+            {name: "Deadlift", sets: 3, reps: "3", weight: Math.round(dl * 0.9)},
+            {name: "Weighted Dips", sets: 3, reps: "8", weight: 25},
+            {name: "Goblet Squat", sets: 3, reps: "12", weight: 60},
+            {name: "Lat Pulldown", sets: 3, reps: "10", weight: 140}
+          ]
         }
       ],
       goals: [
-        {lift: "Bench Press", start: bp, target: bp + 50},
-        {lift: "Squat", start: sq, target: sq + 60},
-        {lift: "Deadlift", start: dl, target: dl + 90}
+        {lift: "Bench Press", start: bp, target: Math.round(bp * 1.15)},
+        {lift: "Squat", start: sq, target: Math.round(sq * 1.2)},
+        {lift: "Deadlift", start: dl, target: Math.round(dl * 1.25)}
       ]
     };
     return plan;
@@ -182,21 +195,26 @@ const aiCoachPrompt = ai.definePrompt({
   input: {schema: AICoachPromptInputSchema},
   output: {schema: AICoachChatOutputSchema},
   tools: [generateWorkoutPlanTool],
-  prompt: `You are an expert AI weightlifting coach inside the IronRank app. You are motivating, knowledgeable, and concise.
+  prompt: `You are an elite AI weightlifting coach at IronRank. You are direct, scientific, motivating, and authoritative. You use lifting terminology (PR, hypertrophy, progressive overload, CNS fatigue).
 
-User stats:
-Lifts & ranks: {{{userStats.liftsStr}}}
-Overall rank: {{{userStats.overallRank}}}
-Streak: {{{userStats.streak}}} days
-Workouts done: {{{userStats.workoutsCompleted}}}
+User Context:
+Athlete Name: {{{userStats.userName}}}
+Current Lifts: {{{userStats.liftsStr}}}
+Overall Classification: {{{userStats.overallRank}}}
+Training Consistency: {{{userStats.streak}}} days streak, {{{userStats.workoutsCompleted}}} workouts logged.
+Bodyweight: {{{userStats.bodyweight}}} lbs.
 
-Current chat history for context:
+Conversation Context:
 {{{chatHistory}}}
 
-If the user asks for a workout plan or program, use the 'generateWorkoutPlan' tool to create it. If you use the tool, make sure to include the generated plan in your final JSON response.
-Otherwise, respond to their query conversationally.
+Guidelines:
+1. Always address the user by their name if provided.
+2. If they ask for a plan, program, or schedule, invoke the 'generateWorkoutPlan' tool immediately.
+3. If they ask about rank, explain the thresholds for their next rank (Bronze/Silver/Gold/Elite).
+4. Keep responses concise (under 4 sentences) unless explaining a plan.
+5. Use a "Grit & Iron" persona—no fluff, just results.
 
-User query: {{{query}}}`,
+User: {{{query}}}`,
 });
 
 // --- Flow Implementation ---
@@ -218,6 +236,8 @@ const aiCoachChatFlow = ai.defineFlow(
       overallRank: input.overallRank,
       streak: input.streak,
       workoutsCompleted: input.workoutsCompleted,
+      bodyweight: input.bodyweight,
+      userName: input.userName || 'Athlete',
     };
 
     // Prepare chat history for the prompt
@@ -225,7 +245,6 @@ const aiCoachChatFlow = ai.defineFlow(
       (message) => `${message.role === 'user' ? 'User' : 'Assistant'}: ${message.content}`
     ).join('\n');
 
-    // Call the prompt action directly (this is the correct 1.x pattern)
     const { output } = await aiCoachPrompt({
       query: input.query,
       userStats: userStats,
@@ -236,7 +255,7 @@ const aiCoachChatFlow = ai.defineFlow(
       return output;
     }
 
-    return { reply: "I'm sorry, I couldn't process that request properly. Could you try again?" };
+    return { reply: "I'm analyzing your data... Stand by. (Error processing request)" };
   }
 );
 

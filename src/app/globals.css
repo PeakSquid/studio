@@ -36,19 +36,22 @@
   }
 }
 
-/* Custom styles for IronRank */
 .hero-title {
-  @apply font-headline text-[42px] tracking-tight leading-none uppercase;
+  @apply font-headline text-[48px] tracking-tight leading-[0.9] uppercase italic;
 }
 
 .eyebrow {
-  @apply text-[11px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1;
+  @apply text-[11px] font-bold tracking-[2px] uppercase text-muted-foreground mb-1;
 }
 
-.rank-bronze { background: #F5DEB3; color: #7A4A10; }
-.rank-silver { background: #E8E8EC; color: #5A5B5F; }
-.rank-gold { background: #FFF3A0; color: #9A7D00; }
-.rank-elite { background: #F3E8FF; color: #7C3AED; }
+.section-header {
+  @apply text-xs font-black uppercase tracking-[2px] text-muted-foreground mb-4 flex items-center gap-3 after:h-px after:flex-1 after:bg-border;
+}
+
+.rank-bronze { background: #CD7F32; color: #fff; }
+.rank-silver { background: #C0C0C0; color: #111; }
+.rank-gold { background: #FFD700; color: #111; }
+.rank-elite { background: #A855F7; color: #fff; }
 
 .dot-grid {
   display: grid;
@@ -57,22 +60,31 @@
 }
 
 .dot {
-  @apply w-full aspect-square rounded-[3px] bg-secondary;
+  @apply w-full aspect-square rounded-[2px] bg-secondary transition-colors;
 }
 
 .dot-active {
-  @apply bg-accent;
+  @apply bg-accent shadow-[0_0_8px_rgba(232,255,58,0.5)];
 }
 
 .dot-half {
-  @apply bg-accent/40;
+  @apply bg-accent/30;
 }
 
-/* Hide scrollbars but allow scrolling */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
 }

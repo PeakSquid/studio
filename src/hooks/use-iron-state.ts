@@ -1,25 +1,25 @@
 import { useState, useEffect } from 'react';
 import { IronState } from '@/types/iron';
 
-const STORAGE_KEY = 'ironrank_state_v1';
+const STORAGE_KEY = 'ironrank_state_v2';
 
 const DEFAULT_STATE: IronState = {
   lifts: {
-    'Bench Press': { pr: 0, reps: 1 },
-    'Squat': { pr: 0, reps: 1 },
-    'Deadlift': { pr: 0, reps: 1 },
-    'Overhead Press': { pr: 0, reps: 1 },
-    'Barbell Row': { pr: 0, reps: 1 },
-    'Pull-Up': { pr: 0, reps: 1 },
+    'Bench Press': { pr: 135, reps: 1, history: [] },
+    'Squat': { pr: 185, reps: 1, history: [] },
+    'Deadlift': { pr: 225, reps: 1, history: [] },
+    'Overhead Press': { pr: 85, reps: 1, history: [] },
+    'Barbell Row': { pr: 115, reps: 1, history: [] },
+    'Pull-Up': { pr: 0, reps: 1, history: [] },
   },
-  streak: 0,
+  streak: 3,
   lastWorkout: null,
-  activity: Array(21).fill(0),
+  activity: [0,0,0,1,2,0,2,2,0,1,2,2,0,0,0,1,2,2,0,2,2], // Mock data for visual appeal
   chatHistory: [],
-  workoutsCompleted: 0,
+  workoutsCompleted: 12,
   plan: null,
-  unlockedAchievements: {},
-  settings: { unit: 'lb', name: '', bodyweight: 0 },
+  unlockedAchievements: { 'first_workout': new Date().toISOString() },
+  settings: { unit: 'lb', name: '', bodyweight: 185, theme: 'iron' },
   weeklyMuscles: {},
   weekStart: null,
 };

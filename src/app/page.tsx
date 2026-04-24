@@ -20,30 +20,28 @@ export default function IronRankApp() {
 
   const renderTab = () => {
     switch (activeTab) {
-      case 'home': return <HomeTab state={state} onStartWorkout={() => setIsWorkoutOpen(true)} />;
+      case 'home': return <HomeTab state={state} onStartWorkout={() => setIsWorkoutOpen(true)} updateState={updateState} />;
       case 'lifts': return <LiftsTab state={state} updateState={updateState} />;
       case 'coach': return <CoachTab state={state} updateState={updateState} />;
       case 'achievements': return <AchievementsTab state={state} />;
       case 'plan': return <PlanTab state={state} />;
-      default: return <HomeTab state={state} onStartWorkout={() => setIsWorkoutOpen(true)} />;
+      default: return <HomeTab state={state} onStartWorkout={() => setIsWorkoutOpen(true)} updateState={updateState} />;
     }
   };
 
   return (
-    <div className="flex flex-col h-full w-full max-w-md mx-auto relative shadow-2xl bg-background">
-      {/* Toast would go here if needed as global fixed element */}
-      
-      <main className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar pb-24">
+    <div className="flex flex-col h-full w-full max-w-md mx-auto relative shadow-2xl bg-background overflow-hidden">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar">
         {renderTab()}
       </main>
 
       {/* Floating Action Button (Only on Home and Lifts) */}
       {(activeTab === 'home' || activeTab === 'lifts') && (
         <button 
-          onClick={() => {/* Open PR Log Modal */}}
-          className="fixed right-6 bottom-28 w-14 h-14 rounded-full bg-accent text-accent-foreground flex items-center justify-center shadow-[0_0_20px_rgba(232,255,58,0.4)] z-50 transition-transform active:scale-95"
+          onClick={() => {/* Open PR Log Modal - Future Feature */}}
+          className="fixed right-6 bottom-28 w-16 h-16 rounded-3xl bg-accent text-accent-foreground flex items-center justify-center shadow-[0_8px_30px_rgba(232,255,58,0.4)] z-50 transition-all active:scale-90 hover:scale-105"
         >
-          <Plus className="w-8 h-8 stroke-[3]" />
+          <Plus className="w-9 h-9 stroke-[3]" />
         </button>
       )}
 
