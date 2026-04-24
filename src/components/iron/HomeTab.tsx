@@ -1,13 +1,13 @@
-
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { IronState } from '@/types/iron';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Settings, Zap, Clock, Cloud, Target, ChevronRight } from 'lucide-react';
+import { Settings, Zap, Clock, Cloud, Target, ChevronRight, Volume2, Loader2, Square } from 'lucide-react';
 import { MUSCLES } from '@/lib/constants';
 import { getOverallRank, getOverallRankProgress, getNearestMilestone } from '@/lib/iron-utils';
+import { getTacticalVoice } from '@/ai/flows/ai-coach-voice-flow';
 import SettingsModal from './SettingsModal';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import { cn } from '@/lib/utils';
@@ -21,17 +21,46 @@ type HomeTabProps = {
 
 export default function HomeTab({ state, onStartWorkout, updateState, isSyncing }: HomeTabProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isBriefing, setIsBriefing] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  
   const rank = getOverallRank(state.lifts);
   const { nextRank, progress, remaining } = getOverallRankProgress(state.lifts);
   const milestone = getNearestMilestone(state.lifts);
   const name = state.settings.name || 'Athlete';
   
-  // Refresh recovery countdowns every minute
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
+
+  const handleCombatBriefing = async () => {
+    if (isBriefing) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      setIsBriefing(false);
+      return;
+    }
+
+    setIsBriefing(true);
+    try {
+      const text = `Athlete ${name}, standing by for briefing. Current rank: ${rank}. You have completed ${state.workoutsCompleted} sessions. ${milestone ? `Primary tactical target: ${milestone.name}. You are ${milestone.toNext} pounds away from ${milestone.nextLabel} rank.` : 'All primary objectives secured.'} Initializing workout protocol. Good luck.`;
+      const result = await getTacticalVoice({ text });
+      setAudioUrl(result.media);
+      setTimeout(() => {
+        if (audioRef.current) {
+          audioRef.current.play();
+        }
+      }, 100);
+    } catch (e) {
+      console.error(e);
+      setIsBriefing(false);
+    }
+  };
 
   const getRecoveryInfo = (muscle: string) => {
     const recoveryTime = state.muscleRecovery[muscle];
@@ -62,13 +91,33 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
           </div>
           <h1 className="hero-title">Iron<span className="text-accent">Rank</span></h1>
         </div>
-        <button 
-          onClick={() => setIsSettingsOpen(true)}
-          className="w-12 h-12 rounded-2xl bg-secondary border border-border flex items-center justify-center text-muted-foreground transition-all active:scale-95 hover:border-accent/50"
-        >
-          <Settings className="w-5 h-5" />
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleCombatBriefing}
+            className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-95",
+              isBriefing ? "bg-accent text-accent-foreground animate-pulse" : "bg-secondary border border-border text-muted-foreground hover:border-accent/50"
+            )}
+          >
+            {isBriefing ? <Square className="w-4 h-4 fill-current" /> : <Volume2 className="w-4 h-4" />}
+          </button>
+          <button 
+            onClick={() => setIsSettingsOpen(true)}
+            className="w-12 h-12 rounded-2xl bg-secondary border border-border flex items-center justify-center text-muted-foreground transition-all active:scale-95 hover:border-accent/50"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+        </div>
       </header>
+
+      {audioUrl && (
+        <audio 
+          ref={audioRef} 
+          src={audioUrl} 
+          className="hidden" 
+          onEnded={() => setIsBriefing(false)} 
+        />
+      )}
 
       {/* Consistency Matrix */}
       <section className="mb-6">
