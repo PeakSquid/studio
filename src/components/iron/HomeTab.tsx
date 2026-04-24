@@ -3,8 +3,10 @@
 import React, { useState } from 'react';
 import { IronState } from '@/types/iron';
 import { Card } from '@/components/ui/card';
-import { Settings, Zap, Target, TrendingUp } from 'lucide-react';
-import { MUSCLES, MUSCLE_ICONS, THRESHOLDS } from '@/lib/constants';
+import { Progress } from '@/components/ui/progress';
+import { Settings, Zap, Target, TrendingUp, ChevronRight } from 'lucide-react';
+import { MUSCLES, MUSCLE_ICONS } from '@/lib/constants';
+import { getOverallRank, getMuscleRank, getOverallRankProgress } from '@/lib/iron-utils';
 import SettingsModal from './SettingsModal';
 
 type HomeTabProps = {
@@ -16,6 +18,7 @@ type HomeTabProps = {
 export default function HomeTab({ state, onStartWorkout, updateState }: HomeTabProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const rank = getOverallRank(state.lifts);
+  const { nextRank, progress, remaining } = getOverallRankProgress(state.lifts);
   const name = state.settings.name || 'Athlete';
   
   const todaysWorkout = getTodaysWorkout(state);
@@ -24,7 +27,7 @@ export default function HomeTab({ state, onStartWorkout, updateState }: HomeTabP
     <div className="p-6 pt-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-32">
       <header className="flex items-end justify-between mb-8">
         <div>
-          <p className="eyebrow">{name} · {rank} Rank</p>
+          <p className="eyebrow">{name} · {rank} Class</p>
           <h1 className="hero-title">Iron<span className="text-accent">Rank</span></h1>
         </div>
         <button 
@@ -34,6 +37,25 @@ export default function HomeTab({ state, onStartWorkout, updateState }: HomeTabP
           <Settings className="w-5 h-5" />
         </button>
       </header>
+
+      {/* Rank Progress */}
+      <Card className="p-5 mb-6 bg-secondary border-border overflow-hidden relative group">
+        <div className="flex justify-between items-end mb-3">
+          <div>
+            <div className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Rank Progression</div>
+            <div className="font-headline text-3xl leading-none">Chasing <span className="text-accent">{nextRank}</span></div>
+          </div>
+          <div className="text-right">
+            <div className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Status</div>
+            <div className="text-xs font-bold">{remaining} Lifts to Tier Up</div>
+          </div>
+        </div>
+        <Progress value={progress} className="h-2 bg-background mb-2" />
+        <div className="flex justify-between text-[9px] font-black uppercase tracking-tighter text-muted-foreground">
+          <span>{rank}</span>
+          <span>{nextRank}</span>
+        </div>
+      </Card>
 
       {/* Streak & Activity */}
       <Card className="p-5 mb-6 bg-secondary/30 border-border overflow-hidden group">
@@ -67,7 +89,7 @@ export default function HomeTab({ state, onStartWorkout, updateState }: HomeTabP
             <div className="absolute -right-8 -top-8 w-32 h-32 bg-accent/5 rounded-full blur-3xl group-hover:bg-accent/10 transition-colors" />
             
             <div className="inline-block bg-accent text-accent-foreground text-[10px] font-black uppercase tracking-[2px] px-2 py-1 rounded-sm mb-4">
-              Daily Program
+              Tactical Program
             </div>
             
             <h2 className="font-headline text-4xl leading-none mb-1 group-hover:text-accent transition-colors">{todaysWorkout.name}</h2>
@@ -80,7 +102,7 @@ export default function HomeTab({ state, onStartWorkout, updateState }: HomeTabP
               </div>
               <div className="p-3 bg-background/50 rounded-xl border border-border/50">
                 <div className="font-headline text-2xl leading-none">{todaysWorkout.duration}m</div>
-                <div className="text-[9px] text-muted-foreground font-black uppercase tracking-wider">Duration</div>
+                <div className="text-[9px] text-muted-foreground font-black uppercase tracking-wider">Time</div>
               </div>
               <div className="p-3 bg-background/50 rounded-xl border border-border/50">
                 <div className="font-headline text-2xl leading-none text-accent">+{todaysWorkout.xp}</div>
@@ -98,36 +120,20 @@ export default function HomeTab({ state, onStartWorkout, updateState }: HomeTabP
         ) : (
           <Card className="p-12 bg-secondary/50 border-dashed border-2 border-border flex flex-col items-center text-center">
             <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center text-3xl mb-4 animate-float">🧘</div>
-            <h2 className="font-headline text-3xl leading-none mb-2">Rest Day</h2>
+            <h2 className="font-headline text-3xl leading-none mb-2">Rest Phase</h2>
             <p className="text-sm text-muted-foreground max-w-[200px]">Recovery is where tissue repairs. Check your Plan for tomorrow.</p>
           </Card>
         )}
       </section>
 
-      {/* Progress Cards */}
-      <div className="grid grid-cols-2 gap-4 mb-10">
-        <Card className="p-4 bg-secondary/20 border-border">
-          <TrendingUp className="w-5 h-5 text-accent mb-2" />
-          <div className="font-headline text-2xl leading-none">Top Rank</div>
-          <div className="text-[10px] text-muted-foreground font-bold uppercase mt-1">
-            {Object.entries(state.lifts).sort((a,b) => b[1].pr - a[1].pr)[0][0]}
-          </div>
-        </Card>
-        <Card className="p-4 bg-secondary/20 border-border">
-          <Target className="w-5 h-5 text-accent mb-2" />
-          <div className="font-headline text-2xl leading-none">Milestone</div>
-          <div className="text-[10px] text-muted-foreground font-bold uppercase mt-1">Elite Rank Chase</div>
-        </Card>
-      </div>
-
       {/* Muscles Section */}
       <section>
-        <h3 className="section-header">Targeted Muscle Groups</h3>
+        <h3 className="section-header">Targeted Groups</h3>
         <div className="grid grid-cols-1 gap-3">
           {Object.keys(MUSCLES).map((muscle) => {
             const mRank = getMuscleRank(muscle, state.lifts);
             const liftNames = MUSCLES[muscle as keyof typeof MUSCLES];
-            const liftStr = liftNames.map(l => `${state.lifts[l]?.pr || 0}lb ${l}`).join(', ');
+            const liftStr = liftNames.map(l => `${state.lifts[l]?.pr || 0}lb ${l.split(' ')[0]}`).join(', ');
             
             return (
               <div key={muscle} className="p-4 bg-secondary/40 border border-border rounded-2xl flex items-center gap-4 group hover:bg-secondary/60 transition-all">
@@ -155,43 +161,6 @@ export default function HomeTab({ state, onStartWorkout, updateState }: HomeTabP
       />
     </div>
   );
-}
-
-function getOverallRank(lifts: Record<string, { pr: number }>) {
-  const getRank = (lift: string, pr: number) => {
-    const tiers = THRESHOLDS[lift as keyof typeof THRESHOLDS] || [];
-    let rank = 'Bronze';
-    for (const t of tiers) { if (pr >= t.min) rank = t.r; }
-    return rank;
-  };
-
-  const all = Object.entries(lifts).map(([l, d]) => getRank(l, d.pr));
-  const c: Record<string, number> = { Bronze: 0, Silver: 0, Gold: 0, Elite: 0 };
-  all.forEach(r => c[r]++);
-  if (c.Elite >= 4) return 'Elite';
-  if (c.Gold >= 4) return 'Gold';
-  if (c.Silver >= 3) return 'Silver';
-  return 'Bronze';
-}
-
-function getMuscleRank(muscle: string, lifts: Record<string, { pr: number }>) {
-  const liftNames = MUSCLES[muscle as keyof typeof MUSCLES] || [];
-  const ranks = ['Bronze', 'Silver', 'Gold', 'Elite'];
-  
-  const getRank = (lift: string, pr: number) => {
-    const tiers = THRESHOLDS[lift as keyof typeof THRESHOLDS] || [];
-    let rank = 'Bronze';
-    for (const t of tiers) { if (pr >= t.min) rank = t.r; }
-    return rank;
-  };
-
-  let minIdx = 3;
-  for (const l of liftNames) {
-    const r = getRank(l, lifts[l]?.pr || 0);
-    const idx = ranks.indexOf(r);
-    if (idx < minIdx) minIdx = idx;
-  }
-  return ranks[minIdx];
 }
 
 function getTodaysWorkout(state: IronState) {

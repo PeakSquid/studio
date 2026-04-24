@@ -3,9 +3,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { IronState } from '@/types/iron';
 import { aiCoachChat } from '@/ai/flows/ai-coach-chat';
-import { Send, RefreshCcw, Loader2, Bot, Info } from 'lucide-react';
+import { Send, RefreshCcw, Loader2, Bot, Info, User } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { getOverallRank } from '@/lib/iron-utils';
 
 type CoachTabProps = {
   state: IronState;
@@ -13,10 +14,10 @@ type CoachTabProps = {
 };
 
 const QUICK_PROMPTS = [
-  'Generate my 12-week plan',
-  'How do I reach Gold rank?',
-  'Analyze my current PRs',
-  'Give me a tip for deadlifts',
+  'Generate 12-week program',
+  'How do I reach next rank?',
+  'Deadlift tactical review',
+  'Analyze my capacity',
 ];
 
 export default function CoachTab({ state, updateState }: CoachTabProps) {
@@ -53,7 +54,7 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
         workoutsCompleted: state.workoutsCompleted,
         bodyweight: state.settings.bodyweight,
         userName: state.settings.name,
-        chatHistory: state.chatHistory.slice(-5), // Only send recent history for tokens
+        chatHistory: state.chatHistory.slice(-6),
       });
 
       if (result.plan) {
@@ -65,14 +66,13 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
       } else {
         updateState(prev => ({
           ...prev,
-          chatHistory: [...prev.chatHistory, { role: 'assistant', content: result.reply || 'I am processing your data. Repeat your query.' }]
+          chatHistory: [...prev.chatHistory, { role: 'assistant', content: result.reply || 'Data processed. Proceeding with analysis.' }]
         }));
       }
     } catch (e) {
-      console.error(e);
       updateState(prev => ({
         ...prev,
-        chatHistory: [...prev.chatHistory, { role: 'assistant', content: 'Link failed. Retrying CNS connection. (Error occurred)' }]
+        chatHistory: [...prev.chatHistory, { role: 'assistant', content: 'Connection failure. Resetting CNS downlink. (Error processing request)' }]
       }));
     } finally {
       setIsLoading(false);
@@ -89,7 +89,7 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
     <div className="h-full flex flex-col bg-background animate-in fade-in duration-500">
       <header className="px-6 pt-12 pb-4 border-b border-border flex items-end justify-between bg-background sticky top-0 z-20">
         <div>
-          <p className="eyebrow">Iron Intelligence v2.1</p>
+          <p className="eyebrow">Iron Intelligence v2.5</p>
           <h1 className="hero-title">Iron <span className="text-accent">Coach</span></h1>
         </div>
         <button onClick={clearChat} className="w-10 h-10 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground active:scale-90 transition-all hover:text-accent">
@@ -97,7 +97,7 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
         </button>
       </header>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-6 no-scrollbar pb-32">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-6 no-scrollbar pb-40">
         {state.chatHistory.length === 0 && (
           <div className="py-20 text-center space-y-6 px-10 max-w-sm mx-auto">
             <div className="w-20 h-20 rounded-3xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent mx-auto animate-float">
@@ -105,26 +105,28 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
             </div>
             <div>
               <h3 className="font-headline text-3xl leading-none mb-2">Tactical Command</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">I am your Elite Strength AI. Ask me about hypertrophy, powerlifting, or request a 12-week program.</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">I am your Elite Strength AI. State your objective: Hypertrophy, Power, or Programming.</p>
             </div>
             <Card className="p-4 bg-secondary/30 border-border text-[10px] text-muted-foreground uppercase font-black tracking-widest flex items-center gap-3">
-              <Info className="w-4 h-4 text-accent" /> AI may generate inaccurate plans. Consult a doctor.
+              <Info className="w-4 h-4 text-accent" /> Use advice at your own risk. Consult medical staff.
             </Card>
           </div>
         )}
 
         {state.chatHistory.map((m, i) => (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] p-4 rounded-2xl shadow-lg ${
+            <div className={`max-w-[85%] p-4 rounded-2xl shadow-xl transition-all ${
               m.role === 'user' 
                 ? 'bg-[#1C2500] border border-[#2E3D00] text-accent rounded-br-none' 
                 : 'bg-secondary border border-border text-foreground rounded-bl-none'
             }`}>
-              {m.role === 'assistant' && (
-                <div className="text-[9px] font-black tracking-[2px] text-accent uppercase mb-2 flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-accent animate-pulse" /> Iron Coach
-                </div>
-              )}
+              <div className="text-[9px] font-black tracking-[2px] text-accent uppercase mb-2 flex items-center gap-2">
+                {m.role === 'assistant' ? (
+                  <><div className="w-1 h-1 rounded-full bg-accent animate-pulse" /> Iron Coach</>
+                ) : (
+                  <><User className="w-2 h-2" /> Athlete</>
+                )}
+              </div>
               <div className="text-sm leading-relaxed whitespace-pre-wrap font-medium">{m.content}</div>
             </div>
           </div>
@@ -135,7 +137,7 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
             <div className="max-w-[85%] p-4 rounded-2xl bg-secondary border border-border rounded-bl-none">
               <div className="flex gap-2 items-center">
                 <Loader2 className="w-4 h-4 text-accent animate-spin" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Calculating...</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Calculating Response...</span>
               </div>
             </div>
           </div>
@@ -159,7 +161,7 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Awaiting athlete input..."
+            placeholder="Awaiting athlete telemetry..."
             className="flex-1 rounded-2xl bg-secondary border-border h-14 px-5 text-sm font-bold placeholder:text-muted-foreground/50 focus:ring-accent"
           />
           <button 
@@ -175,29 +177,4 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
       </div>
     </div>
   );
-}
-
-function getOverallRank(lifts: Record<string, { pr: number }>) {
-  const THRESHOLDS = {
-    'Bench Press':    [{r:'Bronze',min:0},{r:'Silver',min:185},{r:'Gold',min:275},{r:'Elite',min:350}],
-    'Squat':          [{r:'Bronze',min:0},{r:'Silver',min:225},{r:'Gold',min:365},{r:'Elite',min:450}],
-    'Deadlift':       [{r:'Bronze',min:0},{r:'Silver',min:275},{r:'Gold',min:405},{r:'Elite',min:500}],
-    'Overhead Press': [{r:'Bronze',min:0},{r:'Silver',min:115},{r:'Gold',min:175},{r:'Elite',min:225}],
-    'Barbell Row':    [{r:'Bronze',min:0},{r:'Silver',min:155},{r:'Gold',min:225},{r:'Elite',min:295}],
-    'Pull-Up':        [{r:'Bronze',min:0},{r:'Silver',min:45}, {r:'Gold',min:90}, {r:'Elite',min:135}],
-  };
-  const getRank = (lift: string, pr: number) => {
-    const tiers = THRESHOLDS[lift as keyof typeof THRESHOLDS] || [];
-    let rank = 'Bronze';
-    for (const t of tiers) { if (pr >= t.min) rank = t.r; }
-    return rank;
-  };
-
-  const all = Object.entries(lifts).map(([l, d]) => getRank(l, d.pr));
-  const c: Record<string, number> = { Bronze: 0, Silver: 0, Gold: 0, Elite: 0 };
-  all.forEach(r => c[r]++);
-  if (c.Elite >= 4) return 'Elite';
-  if (c.Gold >= 4) return 'Gold';
-  if (c.Silver >= 3) return 'Silver';
-  return 'Bronze';
 }

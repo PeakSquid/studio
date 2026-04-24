@@ -6,7 +6,7 @@ import { THRESHOLDS } from '@/lib/constants';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, CartesianGrid, Tooltip } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { getLiftRank, getLiftProgress } from '@/lib/iron-utils';
 
 type LiftsTabProps = {
   state: IronState;
@@ -18,7 +18,7 @@ export default function LiftsTab({ state }: LiftsTabProps) {
     name: name.split(' ')[0],
     fullName: name,
     weight: data.pr,
-    rank: getRank(name, data.pr)
+    rank: getLiftRank(name, data.pr)
   }));
 
   const rankColors: Record<string, string> = {
@@ -35,9 +35,9 @@ export default function LiftsTab({ state }: LiftsTabProps) {
         <h1 className="hero-title">Iron <span className="text-accent">Profile</span></h1>
       </header>
 
-      {/* Lift Distribution Chart */}
+      {/* Distribution Chart */}
       <section className="mb-10">
-        <h3 className="section-header">Max Weight Distribution</h3>
+        <h3 className="section-header">Max Capacity Profile</h3>
         <Card className="p-4 bg-secondary/30 border-border h-[240px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -86,8 +86,8 @@ export default function LiftsTab({ state }: LiftsTabProps) {
         <div className="grid grid-cols-1 gap-4">
           {Object.entries(state.lifts).map(([name, data]) => {
             const thresholds = THRESHOLDS[name as keyof typeof THRESHOLDS];
-            const rank = getRank(name, data.pr);
-            const { pct, nextLabel, toNext } = getProgress(name, data.pr);
+            const rank = getLiftRank(name, data.pr);
+            const { pct, nextLabel, toNext } = getLiftProgress(name, data.pr);
             
             return (
               <Card key={name} className="p-5 bg-secondary/40 border-border hover:border-accent/30 transition-all group overflow-hidden relative">
@@ -108,18 +108,18 @@ export default function LiftsTab({ state }: LiftsTabProps) {
                 {thresholds && (
                   <div className="space-y-2">
                     <div className="flex justify-between items-end text-[10px] font-bold uppercase tracking-tighter">
-                      <span className="text-muted-foreground">Progression</span>
+                      <span className="text-muted-foreground">To {nextLabel}</span>
                       <span className="text-accent">{pct}%</span>
                     </div>
                     <Progress value={pct} className="h-1.5 bg-background" />
                     <div className="text-[10px] text-muted-foreground font-medium flex justify-between">
                       {toNext > 0 ? (
                         <>
-                          <span>Currently {rank}</span>
-                          <span>{toNext} lb to {nextLabel}</span>
+                          <span>Current: {rank}</span>
+                          <span>{toNext} lb deficit</span>
                         </>
                       ) : (
-                        <span>MAXIMUM RANK REACHED</span>
+                        <span className="text-accent">MAX TIER ACHIEVED</span>
                       )}
                     </div>
                   </div>
@@ -133,10 +133,10 @@ export default function LiftsTab({ state }: LiftsTabProps) {
       <section className="mb-10">
         <h3 className="section-header">Rank Standards</h3>
         <Card className="p-6 bg-secondary/30 border-border space-y-6">
-          <RankTier icon="🥉" name="Bronze" color="#CD7F32" desc="The Foundation. Building fundamental movement patterns and baseline strength." />
-          <RankTier icon="🥈" name="Silver" color="#C0C0C0" desc="Intermediate. Consistent training has yielded significant strength gains." />
-          <RankTier icon="🥇" name="Gold" color="#FFD700" desc="Advanced. Exceptional strength levels relative to the general population." />
-          <RankTier icon="⚡" name="Elite" color="#A855F7" desc="Competitive Level. Top 1% of dedicated lifters globally." />
+          <RankTier icon="🥉" name="Bronze" color="#CD7F32" desc="Base Tier. Focus on structural integrity and fundamental movement mechanics." />
+          <RankTier icon="🥈" name="Silver" color="#C0C0C0" desc="Intermediate Tier. Consistent linear progression and metabolic adaptation." />
+          <RankTier icon="🥇" name="Gold" color="#FFD700" desc="Advanced Tier. Significant neurological efficiency and force production." />
+          <RankTier icon="⚡" name="Elite" color="#A855F7" desc="Supreme Tier. Peak human strength standards for non-competitive lifters." />
         </Card>
       </section>
     </div>
@@ -155,26 +155,4 @@ function RankTier({ icon, name, color, desc }: { icon: string; name: string; col
       </div>
     </div>
   );
-}
-
-function getRank(lift: string, pr: number) {
-  const tiers = THRESHOLDS[lift as keyof typeof THRESHOLDS] || [];
-  let rank = 'Bronze';
-  for (const t of tiers) { if (pr >= t.min) rank = t.r; }
-  return rank;
-}
-
-function getProgress(lift: string, pr: number) {
-  const tiers = THRESHOLDS[lift as keyof typeof THRESHOLDS] || [];
-  if (tiers.length === 0) return { pct: 0, nextLabel: '', toNext: 0 };
-
-  for (let i = tiers.length - 1; i >= 0; i--) {
-    if (pr >= tiers[i].min) {
-      const next = tiers[i + 1];
-      if (!next) return { pct: 100, nextLabel: '', toNext: 0 };
-      const pct = Math.round(((pr - tiers[i].min) / (next.min - tiers[i].min)) * 100);
-      return { pct: Math.min(pct, 100), nextLabel: next.r, toNext: next.min - pr };
-    }
-  }
-  return { pct: 0, nextLabel: tiers[0].r, toNext: tiers[0].min - pr };
 }

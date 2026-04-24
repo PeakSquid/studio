@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { IronState } from '@/types/iron';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { X, Check, Timer, ChevronLeft, ChevronRight, Zap } from 'lucide-react';
+import { X, Check, ChevronLeft, ChevronRight, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type WorkoutModalProps = {
@@ -58,16 +58,15 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
     set.done = !set.done;
     
     if (set.done) {
-      setRestTime(isCompound(currentEx.name) ? 120 : 90);
-      setTotalRest(isCompound(currentEx.name) ? 120 : 90);
+      const rTime = isCompound(currentEx.name) ? 120 : 60;
+      setRestTime(rTime);
+      setTotalRest(rTime);
     }
     
     setSets(newSets);
   };
 
   const handleFinish = () => {
-    const totalVol = sets.flat().reduce((acc, s) => acc + (s.done ? s.weight * s.reps : 0), 0);
-    
     updateState(prev => {
       const newActivity = [...prev.activity];
       newActivity.shift();
@@ -96,12 +95,12 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
         <DialogContent className="max-w-md h-full p-0 bg-background border-none overflow-y-auto no-scrollbar">
           <div className="flex flex-col items-center justify-center p-10 text-center min-h-screen">
             <div className="w-24 h-24 rounded-full bg-accent/20 flex items-center justify-center text-5xl mb-6 animate-pr-pop">⚡</div>
-            <h1 className="hero-title text-6xl mb-2">Workout<br/><span className="text-accent">Complete!</span></h1>
+            <h1 className="hero-title text-6xl mb-2">Tactical<br/><span className="text-accent">Success</span></h1>
             
             <div className="grid grid-cols-2 gap-4 w-full my-10">
               <div className="bg-secondary p-4 rounded-2xl border border-border">
                 <div className="font-headline text-3xl leading-none">{doneSetsCount}</div>
-                <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">Sets</div>
+                <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">Sets Executed</div>
               </div>
               <div className="bg-secondary p-4 rounded-2xl border border-border">
                 <div className="font-headline text-3xl leading-none">{workout.exercises.length}</div>
@@ -111,9 +110,9 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
 
             <button 
               onClick={onClose}
-              className="w-full bg-accent text-accent-foreground font-bold py-4 rounded-2xl text-lg transition-transform active:scale-95"
+              className="w-full bg-accent text-accent-foreground font-bold py-4 rounded-2xl text-lg transition-transform active:scale-95 shadow-[0_10px_30px_rgba(232,255,58,0.3)]"
             >
-              Finish & Save
+              Log Session & Exit
             </button>
           </div>
         </DialogContent>
@@ -127,7 +126,7 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
         <header className="px-6 pt-10 pb-4 border-b border-border flex items-start justify-between bg-background">
           <div>
             <h2 className="font-headline text-3xl leading-none">{workout.name}</h2>
-            <p className="text-xs text-muted-foreground mt-1">{workout.focus}</p>
+            <p className="text-xs text-muted-foreground mt-1 uppercase tracking-tighter">{workout.focus}</p>
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center transition-transform active:scale-90">
             <X className="w-4 h-4" />
@@ -148,7 +147,7 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
             </button>
           ))}
           <div className="flex-1" />
-          <div className="flex items-center text-[11px] font-bold text-muted-foreground pr-2">
+          <div className="flex items-center text-[11px] font-bold text-muted-foreground pr-2 uppercase">
             {doneSetsCount}/{totalSets} SETS
           </div>
         </div>
@@ -159,7 +158,7 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
 
         <div className="flex-1 overflow-y-auto px-6 py-6 no-scrollbar">
           <div className="mb-6">
-            <div className="eyebrow">Exercise {activeExIdx + 1} of {workout.exercises.length}</div>
+            <div className="eyebrow">Objective {activeExIdx + 1} of {workout.exercises.length}</div>
             <h3 className="font-headline text-4xl leading-tight uppercase tracking-tight">{currentEx.name}</h3>
           </div>
 
@@ -178,7 +177,7 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
                 <div className="flex-1 flex gap-4">
                   <div>
                     <div className="font-black text-lg leading-none">{set.weight}<span className="text-[10px] font-sans text-muted-foreground ml-0.5">lb</span></div>
-                    <div className="text-[9px] font-black uppercase tracking-tighter text-muted-foreground">Weight</div>
+                    <div className="text-[9px] font-black uppercase tracking-tighter text-muted-foreground">Load</div>
                   </div>
                   <div>
                     <div className="font-black text-lg leading-none">{set.reps}</div>
@@ -217,8 +216,8 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
                 </div>
               </div>
               <div className="flex-1">
-                <div className="text-[10px] font-black tracking-widest text-muted-foreground uppercase">Resting</div>
-                <div className="text-sm font-bold">Recover for next set</div>
+                <div className="text-[10px] font-black tracking-widest text-muted-foreground uppercase">Recovery Phase</div>
+                <div className="text-sm font-bold">Resupply CNS for next set</div>
               </div>
               <button 
                 onClick={() => setRestTime(0)}
@@ -244,17 +243,17 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
               onClick={() => setActiveExIdx(prev => prev + 1)}
               className="flex-[2] bg-accent text-accent-foreground font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-[0_4px_20px_rgba(232,255,58,0.2)]"
             >
-              Next Exercise <ChevronRight className="w-5 h-5" />
+              Next Objective <ChevronRight className="w-5 h-5" />
             </button>
           ) : (
             <button 
               onClick={handleFinish}
               className={cn(
-                "flex-[2] font-bold py-4 rounded-2xl flex items-center justify-center gap-2",
+                "flex-[2] font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all",
                 doneSetsCount === totalSets ? "bg-accent text-accent-foreground shadow-[0_4px_20px_rgba(232,255,58,0.3)]" : "bg-secondary text-muted-foreground"
               )}
             >
-              Finish Workout <Zap className="w-5 h-5 fill-current" />
+              Extract & Log <Zap className="w-5 h-5 fill-current" />
             </button>
           )}
         </footer>

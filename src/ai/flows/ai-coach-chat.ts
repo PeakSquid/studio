@@ -1,32 +1,10 @@
 'use server';
 /**
  * @fileOverview An AI coach agent that provides personalized advice and workout plans.
- *
- * - aiCoachChat - A function that handles natural language questions and plan generation.
- * - AICoachChatInput - The input type for the aiCoachChat function.
- * - AICoachChatOutput - The return type for the aiCoachChat function.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-
-// Helper function to calculate rank.
-function getRank(lift: string, pr: number): string {
-  const THRESHOLDS: { [key: string]: { r: string; min: number }[] } = {
-    'Bench Press':    [{r:'Bronze',min:0},{r:'Silver',min:185},{r:'Gold',min:275},{r:'Elite',min:350}],
-    'Squat':          [{r:'Bronze',min:0},{r:'Silver',min:225},{r:'Gold',min:365},{r:'Elite',min:450}],
-    'Deadlift':       [{r:'Bronze',min:0},{r:'Silver',min:275},{r:'Gold',min:405},{r:'Elite',min:500}],
-    'Overhead Press': [{r:'Bronze',min:0},{r:'Silver',min:115},{r:'Gold',min:175},{r:'Elite',min:225}],
-    'Barbell Row':    [{r:'Bronze',min:0},{r:'Silver',min:155},{r:'Gold',min:225},{r:'Elite',min:295}],
-    'Pull-Up':        [{r:'Bronze',min:0},{r:'Silver',min:45}, {r:'Gold',min:90}, {r:'Elite',min:135}],
-  };
-  const tiers = THRESHOLDS[lift] || [];
-  let rank = 'Bronze';
-  for (const t of tiers) { if (pr >= t.min) rank = t.r; }
-  return rank;
-}
-
-// --- Schemas --- 
 
 const LiftDataSchema = z.object({
   pr: z.number().describe('Personal record for the lift in pounds.'),
@@ -41,183 +19,124 @@ const ExerciseSchema = z.object({
 });
 
 const WorkoutSchema = z.object({
-  name: z.string().describe('Name of the workout, e.g., "Push Power".'),
+  name: z.string().describe('Name of the workout.'),
   type: z.enum(['push', 'pull', 'legs', 'upper', 'lower', 'full', 'rest']).describe('Type of workout.'),
   focus: z.string().describe('Muscle groups or training focus.'),
   duration: z.number().describe('Estimated duration in minutes.'),
-  xp: z.number().describe('Experience points earned from completing the workout.'),
-  exercises: z.array(ExerciseSchema).describe('List of exercises in the workout.'),
+  xp: z.number().describe('Experience points earned.'),
+  exercises: z.array(ExerciseSchema).describe('List of exercises.'),
 });
 
 const PlanBlockSchema = z.object({
-  name: z.string().describe('Name of the training block, e.g., "Block 1 — Strength Foundation".'),
+  name: z.string().describe('Name of the training block.'),
   desc: z.string().describe('Description of the training block.'),
 });
 
 const PlanGoalSchema = z.object({
-  lift: z.string().describe('Name of the lift, e.g., "Bench Press".'),
-  start: z.number().describe('Starting PR for the lift.'),
-  target: z.number().describe('Target PR for the lift at the end of the plan.'),
+  lift: z.string().describe('Name of the lift.'),
+  start: z.number().describe('Starting PR.'),
+  target: z.number().describe('Target PR.'),
 });
 
 const WorkoutPlanSchema = z.object({
   totalWeeks: z.number().describe('Total number of weeks for the plan.'),
   blocks: z.array(PlanBlockSchema).describe('Breakdown of training blocks.'),
-  schedule: z.record(z.enum(['push', 'pull', 'legs', 'upper', 'lower', 'full', 'rest'])).describe('Weekly schedule mapping day of week (0=Sunday to 6=Saturday) to workout type.'),
-  workouts: z.array(WorkoutSchema).describe('Detailed definitions for each workout type.'),
-  goals: z.array(PlanGoalSchema).describe('Target personal records for key lifts.'),
+  schedule: z.record(z.enum(['push', 'pull', 'legs', 'upper', 'lower', 'full', 'rest'])).describe('Weekly schedule (0-6).'),
+  workouts: z.array(WorkoutSchema).describe('Detailed definitions.'),
+  goals: z.array(PlanGoalSchema).describe('Target records.'),
 });
 
 const AICoachChatInputSchema = z.object({
-  query: z.string().describe('The user\'s chat message to the AI coach.'),
-  lifts: z.record(z.string(), LiftDataSchema).describe('Current personal records for all tracked lifts.'),
-  overallRank: z.string().describe('The user\'s overall rank (e.g., Bronze, Silver, Gold, Elite).'),
-  streak: z.number().describe('The user\'s current workout streak in days.'),
-  workoutsCompleted: z.number().describe('The total number of workouts completed by the user.'),
-  bodyweight: z.number().describe('User\'s bodyweight in lbs.'),
-  userName: z.string().describe('User\'s name for personalization.'),
+  query: z.string().describe('The user\'s message.'),
+  lifts: z.record(z.string(), LiftDataSchema).describe('Current records.'),
+  overallRank: z.string().describe('The user\'s rank.'),
+  streak: z.number().describe('User\'s streak.'),
+  workoutsCompleted: z.number().describe('Total workouts.'),
+  bodyweight: z.number().describe('User bodyweight.'),
+  userName: z.string().describe('User name.'),
   chatHistory: z.array(z.object({
-    role: z.enum(['user', 'assistant']).describe('Role of the message sender. Can be "user" or "assistant".'),
-    content: z.string().describe('Content of the chat message.'),
-  })).describe('Recent chat history for context.'),
+    role: z.enum(['user', 'assistant']),
+    content: z.string(),
+  })),
 });
 export type AICoachChatInput = z.infer<typeof AICoachChatInputSchema>;
 
-const AICoachPromptInputSchema = z.object({
-  query: z.string(),
-  userStats: z.object({
-    liftsStr: z.string(),
-    overallRank: z.string(),
-    streak: z.number(),
-    workoutsCompleted: z.number(),
-    bodyweight: z.number(),
-    userName: z.string(),
-  }),
-  chatHistory: z.string(),
-});
-
 const AICoachChatOutputSchema = z.object({
-  reply: z.string().describe('The conversational reply from the AI coach.'),
-  plan: WorkoutPlanSchema.optional().describe('A personalized workout plan, if generated by the AI coach using the tool.'),
+  reply: z.string().describe('The coach reply.'),
+  plan: WorkoutPlanSchema.optional().describe('Personalized plan if requested.'),
 });
 export type AICoachChatOutput = z.infer<typeof AICoachChatOutputSchema>;
-
-
-// --- Tools ---
 
 const generateWorkoutPlanTool = ai.defineTool(
   {
     name: 'generateWorkoutPlan',
-    description: 'Generates a personalized 12-week workout plan based on the user\'s current lifts and training history. Call this tool when the user explicitly asks for a workout plan or program.',
+    description: 'Generates a 12-week plan. Call when user asks for a plan, program, or schedule.',
     inputSchema: z.object({
-      benchPressPR: z.number().describe('User\'s current Bench Press PR in lbs.'),
-      squatPR: z.number().describe('User\'s current Squat PR in lbs.'),
-      deadliftPR: z.number().describe('User\'s current Deadlift PR in lbs.'),
-      overheadPressPR: z.number().describe('User\'s current Overhead Press PR in lbs.'),
-      barbellRowPR: z.number().describe('User\'s current Barbell Row PR in lbs.'),
-      pullUpPR: z.number().describe('User\'s current Pull-Up PR in lbs.'),
+      lifts: z.record(z.string(), z.number()),
     }),
     outputSchema: WorkoutPlanSchema,
   },
   async (input) => {
-    const bp = input.benchPressPR || 135;
-    const sq = input.squatPR || 185;
-    const dl = input.deadliftPR || 225;
-    const ohp = input.overheadPressPR || 75;
-    const br = input.barbellRowPR || 115;
-    const pu = input.pullUpPR || 0;
-
-    const plan = {
+    const bp = input.lifts['Bench Press'] || 135;
+    const sq = input.lifts['Squat'] || 185;
+    const dl = input.lifts['Deadlift'] || 225;
+    
+    return {
       totalWeeks: 12,
       blocks: [
-        {name: "Phase 1 — Hypertrophic Base", desc: "Weeks 1-4 · Focus on volume and structural balance. Higher reps (8-12)."},
-        {name: "Phase 2 — Strength & Power", desc: "Weeks 5-8 · Linear progression on main compounds. Reps down to 3-5."},
-        {name: "Phase 3 — Intensification", desc: "Weeks 9-12 · Heavy singles and doubles. Peaking for PR attempts."}
+        {name: "Phase 1 — Hypertrophic Base", desc: "Weeks 1-4 · Focus on volume (8-12 reps)."},
+        {name: "Phase 2 — Strength Foundation", desc: "Weeks 5-8 · Focus on 3-5 rep strength."},
+        {name: "Phase 3 — Peak Output", desc: "Weeks 9-12 · Intensification and PR testing."}
       ],
-      schedule: {
-        "0": "rest", "1": "push", "2": "pull", "3": "legs", "4": "rest", "5": "full", "6": "rest"
-      },
+      schedule: { "0": "rest", "1": "push", "2": "pull", "3": "legs", "4": "rest", "5": "full", "6": "rest" },
       workouts: [
         {
-          name: "Push Protocol", type: "push", focus: "Chest · Shoulders · Triceps", duration: 52, xp: 3,
-          exercises: [
-            {name: "Bench Press", sets: 4, reps: "5", weight: Math.round(bp * 0.85)},
-            {name: "Overhead Press", sets: 3, reps: "8", weight: Math.round(ohp * 0.8)},
-            {name: "Incline DB Press", sets: 3, reps: "10", weight: 65},
-            {name: "Lateral Raises", sets: 3, reps: "15", weight: 20},
-            {name: "Tricep Pushdown", sets: 3, reps: "12", weight: 50}
-          ]
+          name: "Push Protocol", type: "push", focus: "Chest/Shoulders", duration: 50, xp: 3,
+          exercises: [{name: "Bench Press", sets: 4, reps: "5", weight: Math.round(bp * 0.85)}]
         },
         {
-          name: "Pull Protocol", type: "pull", focus: "Back · Biceps", duration: 48, xp: 3,
-          exercises: [
-            {name: "Barbell Row", sets: 4, reps: "5", weight: Math.round(br * 0.85)},
-            {name: "Pull-Up", sets: 3, reps: "6", weight: pu},
-            {name: "Cable Row", sets: 3, reps: "10", weight: 120},
-            {name: "Face Pulls", sets: 3, reps: "15", weight: 40},
-            {name: "Barbell Curl", sets: 3, reps: "10", weight: 65}
-          ]
+          name: "Pull Protocol", type: "pull", focus: "Back/Biceps", duration: 45, xp: 3,
+          exercises: [{name: "Barbell Row", sets: 4, reps: "5", weight: 135}]
         },
         {
-          name: "Leg Protocol", type: "legs", focus: "Quads · Hamstrings · Glutes", duration: 55, xp: 4,
-          exercises: [
-            {name: "Squat", sets: 4, reps: "5", weight: Math.round(sq * 0.85)},
-            {name: "Romanian Deadlift", sets: 3, reps: "8", weight: Math.round(dl * 0.7)},
-            {name: "Leg Press", sets: 3, reps: "12", weight: 360},
-            {name: "Leg Curl", sets: 3, reps: "12", weight: 80},
-            {name: "Calf Raise", sets: 4, reps: "15", weight: 135}
-          ]
+          name: "Leg Protocol", type: "legs", focus: "Quads/Hams", duration: 55, xp: 4,
+          exercises: [{name: "Squat", sets: 4, reps: "5", weight: Math.round(sq * 0.85)}]
         },
         {
-          name: "Full Body Tactical", type: "full", focus: "Full Body Hypertrophy", duration: 60, xp: 5,
-          exercises: [
-            {name: "Deadlift", sets: 3, reps: "3", weight: Math.round(dl * 0.9)},
-            {name: "Weighted Dips", sets: 3, reps: "8", weight: 25},
-            {name: "Goblet Squat", sets: 3, reps: "12", weight: 60},
-            {name: "Lat Pulldown", sets: 3, reps: "10", weight: 140}
-          ]
+          name: "Full Body Tactical", type: "full", focus: "Total Body", duration: 60, xp: 5,
+          exercises: [{name: "Deadlift", sets: 3, reps: "3", weight: Math.round(dl * 0.9)}]
         }
       ],
       goals: [
-        {lift: "Bench Press", start: bp, target: Math.round(bp * 1.15)},
-        {lift: "Squat", start: sq, target: Math.round(sq * 1.2)},
-        {lift: "Deadlift", start: dl, target: Math.round(dl * 1.25)}
+        {lift: "Bench Press", start: bp, target: Math.round(bp * 1.1)},
+        {lift: "Squat", start: sq, target: Math.round(sq * 1.15)},
+        {lift: "Deadlift", start: dl, target: Math.round(dl * 1.2)}
       ]
     };
-    return plan;
   }
 );
 
-// --- Prompt Definition ---
-
 const aiCoachPrompt = ai.definePrompt({
   name: 'aiCoachPrompt',
-  input: {schema: AICoachPromptInputSchema},
+  input: {schema: AICoachChatInputSchema},
   output: {schema: AICoachChatOutputSchema},
   tools: [generateWorkoutPlanTool],
-  prompt: `You are an elite AI weightlifting coach at IronRank. You are direct, scientific, motivating, and authoritative. You use lifting terminology (PR, hypertrophy, progressive overload, CNS fatigue).
+  prompt: `You are an elite AI weightlifting coach. Persona: "Grit & Iron". Authoritative, scientific, concise. Address the user as {{{userName}}}.
 
-User Context:
-Athlete Name: {{{userStats.userName}}}
-Current Lifts: {{{userStats.liftsStr}}}
-Overall Classification: {{{userStats.overallRank}}}
-Training Consistency: {{{userStats.streak}}} days streak, {{{userStats.workoutsCompleted}}} workouts logged.
-Bodyweight: {{{userStats.bodyweight}}} lbs.
-
-Conversation Context:
-{{{chatHistory}}}
+Athlete Data:
+- Current Rank: {{{overallRank}}}
+- Stats: {{{liftsSummary}}}
+- History: {{{streak}}} day streak, {{{workoutsCompleted}}} total logs.
+- Bodyweight: {{{bodyweight}}} lb.
 
 Guidelines:
-1. Always address the user by their name if provided.
-2. If they ask for a plan, program, or schedule, invoke the 'generateWorkoutPlan' tool immediately.
-3. If they ask about rank, explain the thresholds for their next rank (Bronze/Silver/Gold/Elite).
-4. Keep responses concise (under 4 sentences) unless explaining a plan.
-5. Use a "Grit & Iron" persona—no fluff, just results.
+1. If a plan is requested, use generateWorkoutPlan immediately.
+2. If discussing rank, explain thresholds.
+3. Be tactical—no fluff. Use terminology (PR, CNS, Hypertrophy, Volume).
+4. Addressing weak points: Identify the lift with the lowest rank and suggest focus.
 
-User: {{{query}}}`,
+User Message: {{{query}}}`,
 });
-
-// --- Flow Implementation ---
 
 const aiCoachChatFlow = ai.defineFlow(
   {
@@ -226,36 +145,16 @@ const aiCoachChatFlow = ai.defineFlow(
     outputSchema: AICoachChatOutputSchema,
   },
   async (input) => {
-    // Prepare user stats string for the prompt
-    const liftsStr = Object.entries(input.lifts)
-      .map(([l, d]) => `${l}: ${d.pr} lb (${getRank(l, d.pr)})`)
+    const liftsSummary = Object.entries(input.lifts)
+      .map(([l, d]) => `${l}: ${d.pr}lb`)
       .join(', ');
 
-    const userStats = {
-      liftsStr,
-      overallRank: input.overallRank,
-      streak: input.streak,
-      workoutsCompleted: input.workoutsCompleted,
-      bodyweight: input.bodyweight,
-      userName: input.userName || 'Athlete',
-    };
-
-    // Prepare chat history for the prompt
-    const chatHistory = input.chatHistory.map(
-      (message) => `${message.role === 'user' ? 'User' : 'Assistant'}: ${message.content}`
-    ).join('\n');
-
     const { output } = await aiCoachPrompt({
-      query: input.query,
-      userStats: userStats,
-      chatHistory: chatHistory,
+      ...input,
+      liftsSummary,
     });
 
-    if (output) {
-      return output;
-    }
-
-    return { reply: "I'm analyzing your data... Stand by. (Error processing request)" };
+    return output || { reply: "Downlink disrupted. State query again." };
   }
 );
 
