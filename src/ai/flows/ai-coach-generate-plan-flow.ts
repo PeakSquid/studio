@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview This file defines a Genkit flow for generating a personalized 12-week training plan.
@@ -5,8 +6,9 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 
-// --- Helper functions and constants (replicated from client for self-contained logic) ---
+// --- Helper functions and constants ---
 const THRESHOLDS = {
   'Bench Press':    [{r:'Bronze',min:0},{r:'Silver',min:185},{r:'Gold',min:275},{r:'Elite',min:350}],
   'Squat':          [{r:'Bronze',min:0},{r:'Silver',min:225},{r:'Gold',min:365},{r:'Elite',min:450}],
@@ -23,9 +25,9 @@ function getRank(lift: string, pr: number): string {
   return rank;
 }
 
-function overallRank(lifts: Record<string, { pr: number; reps: number }>): string {
-  if (!lifts) return 'Bronze';
-  const all = Object.entries(lifts).map(([l,d]) => getRank(l,d.pr));
+function overallRank(lifts: Record<string, any>): string {
+  if (!lifts || typeof lifts !== 'object') return 'Bronze';
+  const all = Object.entries(lifts).map(([l,d]) => getRank(l, d?.pr || 0));
   const c = {Bronze:0,Silver:0,Gold:0,Elite:0};
   all.forEach(r => (c as any)[r]++);
   if (c.Elite >= 4) return 'Elite';
@@ -34,66 +36,61 @@ function overallRank(lifts: Record<string, { pr: number; reps: number }>): strin
   return 'Bronze';
 }
 
-// Input Schema for the flow
 const AICoachGeneratePlanInputSchema = z.object({
-  userName: z.string().describe('The name of the user, for personalization.'),
-  lifts: z.record(z.string(), z.object({
-    pr: z.number().default(0).describe('Personal record weight for the lift in lbs.'),
-    reps: z.number().default(0).describe('Reps achieved at the personal record weight.'),
-  }).passthrough()).default({}).describe('An object containing current personal records for various lifts.'),
-  streak: z.number().describe('Current workout streak in days.'),
-  workoutsCompleted: z.number().describe('Total number of workouts completed.'),
-  bodyweight: z.number().describe('User\'s bodyweight in lbs.'),
+  userName: z.string().default('Athlete'),
+  lifts: z.record(z.any()).optional().default({}),
+  streak: z.number().default(0),
+  workoutsCompleted: z.number().default(0),
+  bodyweight: z.number().default(180),
 });
 export type AICoachGeneratePlanInput = z.infer<typeof AICoachGeneratePlanInputSchema>;
 
-// Internal schema including the derived fields for the prompt
 const InternalGeneratePlanPromptSchema = AICoachGeneratePlanInputSchema.extend({
-  liftsSummary: z.string(),
-  overallRankValue: z.string(),
+  liftsSummary: z.string().default('No data recorded.'),
+  overallRankValue: z.string().default('Bronze'),
 });
 
-// Output Schemas to match the expected JSON structure
 const ExerciseSchema = z.object({
-  name: z.string().describe('Name of the exercise.'),
-  sets: z.number().describe('Number of sets.'),
-  reps: z.string().describe('Number of reps, can be a range or single number.'),
-  weight: z.number().describe('Suggested weight for the exercise in lbs.'),
+  name: z.string(),
+  sets: z.number(),
+  reps: z.string(),
+  weight: z.number(),
 });
 
 const WorkoutSchema = z.object({
-  name: z.string().describe('Name of the workout (e.g., Push Power).'),
-  type: z.enum(['push', 'pull', 'legs', 'upper', 'lower', 'full', 'rest']).describe('Type of workout.'),
-  focus: z.string().describe('Muscles or areas the workout focuses on.'),
-  duration: z.number().describe('Estimated duration of the workout in minutes.'),
-  xp: z.number().describe('Experience points awarded for completing the workout.'),
-  exercises: z.array(ExerciseSchema).describe('List of exercises in the workout.'),
+  name: z.string(),
+  type: z.enum(['push', 'pull', 'legs', 'upper', 'lower', 'full', 'rest']),
+  focus: z.string(),
+  duration: z.number(),
+  xp: z.number(),
+  exercises: z.array(ExerciseSchema),
 });
 
 const GoalSchema = z.object({
-  lift: z.string().describe('Name of the lift for the goal.'),
-  start: z.number().describe('Starting PR for this lift.'),
-  target: z.number().describe('Target PR for this lift at the end of the plan.'),
+  lift: z.string(),
+  start: z.number(),
+  target: z.number(),
 });
 
 const PlanSchema = z.object({
-  totalWeeks: z.number().describe('Total number of weeks in the training plan.'),
+  totalWeeks: z.number(),
   blocks: z.array(z.object({
-    name: z.string().describe('Name of the training block (e.g., Block 1 — Strength Foundation).'),
-    desc: z.string().describe('Description of the training block including weeks and focus.'),
-  })).describe('Array of training blocks.'),
-  schedule: z.record(z.enum(['push', 'pull', 'legs', 'upper', 'lower', 'full', 'rest'])).describe('Weekly workout schedule mapping day of week (0-6) to workout type.'),
-  workouts: z.array(WorkoutSchema).describe('Detailed definitions of each workout type.'),
-  goals: z.array(GoalSchema).describe('Specific lift goals with starting and target PRs.'),
+    name: z.string(),
+    desc: z.string(),
+  })),
+  schedule: z.record(z.enum(['push', 'pull', 'legs', 'upper', 'lower', 'full', 'rest'])),
+  workouts: z.array(WorkoutSchema),
+  goals: z.array(GoalSchema),
 });
 
 const AICoachGeneratePlanOutputSchema = z.object({
-  plan: PlanSchema.describe('The generated 12-week training plan.'),
+  plan: PlanSchema,
 });
 export type AICoachGeneratePlanOutput = z.infer<typeof AICoachGeneratePlanOutputSchema>;
 
 const generatePlanPrompt = ai.definePrompt({
   name: 'generatePlanPrompt',
+  model: googleAI.model('gemini-1.5-flash'),
   input: { schema: InternalGeneratePlanPromptSchema },
   output: { schema: AICoachGeneratePlanOutputSchema },
   prompt: `You are an expert AI weightlifting coach. Generate a personalized 12-week training plan for {{{userName}}} based on their current stats.
@@ -116,15 +113,15 @@ const aiCoachGeneratePlanFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const lifts = input.lifts || {};
-      const liftsSummary = Object.entries(lifts)
-        .map(([l, d]) => `${l}: ${d?.pr || 0} lb (${getRank(l, d?.pr || 0)})`)
+      const safeLifts = input.lifts || {};
+      const liftsSummary = Object.entries(safeLifts)
+        .map(([l, d]: [string, any]) => `${l}: ${d?.pr || 0} lb (${getRank(l, d?.pr || 0)})`)
         .join(', ') || 'No data recorded.';
-      const overallRankValue = overallRank(lifts);
+      const overallRankValue = overallRank(safeLifts);
 
       const { output } = await generatePlanPrompt({
         ...input,
-        lifts,
+        lifts: safeLifts,
         liftsSummary,
         overallRankValue,
       });

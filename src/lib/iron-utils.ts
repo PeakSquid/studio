@@ -1,3 +1,4 @@
+
 import { THRESHOLDS, MUSCLES } from './constants';
 import { IronState, LiftData } from '@/types/iron';
 
@@ -11,7 +12,8 @@ export function getLiftRank(lift: string, weight: number): string {
 }
 
 export function getOverallRank(lifts: Record<string, LiftData>): string {
-  const all = Object.entries(lifts).map(([l, d]) => getLiftRank(l, d.pr));
+  if (!lifts || typeof lifts !== 'object') return 'Bronze';
+  const all = Object.entries(lifts).map(([l, d]) => getLiftRank(l, d?.pr || 0));
   const c: Record<string, number> = { Bronze: 0, Silver: 0, Gold: 0, Elite: 0 };
   all.forEach(r => c[r]++);
   
@@ -26,20 +28,20 @@ export function getOverallRankProgress(lifts: Record<string, LiftData>) {
   const ranks = ['Bronze', 'Silver', 'Gold', 'Elite'];
   const nextRank = ranks[ranks.indexOf(currentRank) + 1];
   
-  if (!nextRank) return { currentRank, nextRank: 'MAX', progress: 100, remaining: 0 };
+  if (!nextRank || !lifts) return { currentRank, nextRank: 'MAX', progress: 100, remaining: 0 };
 
   let totalRequired = 0;
   let currentCount = 0;
 
   if (nextRank === 'Silver') {
     totalRequired = 3;
-    currentCount = Object.values(lifts).filter(l => ranks.indexOf(getLiftRank('Bench Press', l.pr)) >= 1).length;
+    currentCount = Object.values(lifts).filter(l => ranks.indexOf(getLiftRank('Bench Press', l?.pr || 0)) >= 1).length;
   } else if (nextRank === 'Gold') {
     totalRequired = 4;
-    currentCount = Object.values(lifts).filter(l => ranks.indexOf(getLiftRank('Bench Press', l.pr)) >= 2).length;
+    currentCount = Object.values(lifts).filter(l => ranks.indexOf(getLiftRank('Bench Press', l?.pr || 0)) >= 2).length;
   } else if (nextRank === 'Elite') {
     totalRequired = 4;
-    currentCount = Object.values(lifts).filter(l => ranks.indexOf(getLiftRank('Bench Press', l.pr)) >= 3).length;
+    currentCount = Object.values(lifts).filter(l => ranks.indexOf(getLiftRank('Bench Press', l?.pr || 0)) >= 3).length;
   }
 
   return {
@@ -51,11 +53,12 @@ export function getOverallRankProgress(lifts: Record<string, LiftData>) {
 }
 
 export function getNearestMilestone(lifts: Record<string, LiftData>) {
+  if (!lifts) return null;
   let nearest = null;
   let minDiff = Infinity;
 
   for (const [name, data] of Object.entries(lifts)) {
-    const { toNext, nextLabel } = getLiftProgress(name, data.pr);
+    const { toNext, nextLabel } = getLiftProgress(name, data?.pr || 0);
     if (toNext > 0 && toNext < minDiff) {
       minDiff = toNext;
       nearest = { name, toNext, nextLabel };
@@ -98,43 +101,40 @@ export function calculatePlates(targetWeight: number, barWeight: number = 45) {
 }
 
 export function getRadarData(lifts: Record<string, LiftData>) {
+  if (!lifts || typeof lifts !== 'object') return [];
   return Object.entries(lifts).map(([name, data]) => {
     const tiers = THRESHOLDS[name as keyof typeof THRESHOLDS] || [];
     const eliteMax = tiers[tiers.length - 1]?.min || 500;
     return {
       subject: name.split(' ')[0],
-      A: Math.min(Math.round((data.pr / eliteMax) * 100), 100),
+      A: Math.min(Math.round(((data?.pr || 0) / eliteMax) * 100), 100),
       fullMark: 100,
     };
   });
 }
 
 export function getCNSFatigue(streak: number, activity: number[]) {
-  const recentWorkouts = activity.slice(-7).filter(a => a === 2).length;
-  let load = recentWorkouts * 15 + streak * 5;
+  const safeActivity = activity || [];
+  const recentWorkouts = safeActivity.slice(-7).filter(a => a === 2).length;
+  let load = recentWorkouts * 15 + (streak || 0) * 5;
   return Math.min(load, 100);
 }
 
-/**
- * Calculates athlete level based on total XP.
- * Formula: Level = floor(sqrt(XP / 100))
- */
 export function getAthleteLevel(xp: number) {
-  const level = Math.floor(Math.sqrt(xp / 100)) + 1;
+  const safeXp = xp || 0;
+  const level = Math.floor(Math.sqrt(safeXp / 100)) + 1;
   const currentLevelXp = Math.pow(level - 1, 2) * 100;
   const nextLevelXp = Math.pow(level, 2) * 100;
-  const progress = Math.round(((xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100);
+  const progress = Math.round(((safeXp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100);
   
   return { level, progress, nextLevelXp };
 }
 
-/**
- * Generates a daily objective based on rank and history.
- */
 export function getDailyObjective(state: IronState) {
-  const rank = getOverallRank(state.lifts);
+  const safeLifts = state.lifts || {};
+  const rank = getOverallRank(safeLifts);
   const baseVolume = rank === 'Elite' ? 8000 : rank === 'Gold' ? 6000 : rank === 'Silver' ? 4000 : 2500;
-  const multiplier = 1 + (state.streak * 0.05);
+  const multiplier = 1 + ((state.streak || 0) * 0.05);
   const targetVolume = Math.round(baseVolume * multiplier);
   
   return {

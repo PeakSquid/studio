@@ -36,7 +36,7 @@ const DEFAULT_STATE: IronState = {
 };
 
 // Key versioning ensures a clean reset for the user if necessary
-const STORAGE_KEY = 'ironrank_state_v10';
+const STORAGE_KEY = 'ironrank_state_v11';
 
 export function useIronState() {
   const { user, isUserLoading } = useUser();
@@ -57,12 +57,21 @@ export function useIronState() {
   useEffect(() => {
     if (!isUserLoading && !isRemoteLoading) {
       if (remoteData) {
-        setState({ ...DEFAULT_STATE, ...remoteData });
+        // Deeply merge to prevent null overwrites
+        setState((prev) => ({ 
+          ...prev, 
+          ...remoteData,
+          lifts: remoteData.lifts ? { ...prev.lifts, ...remoteData.lifts } : prev.lifts,
+          settings: remoteData.settings ? { ...prev.settings, ...remoteData.settings } : prev.settings,
+          chatHistory: remoteData.chatHistory || prev.chatHistory,
+          unlockedAchievements: remoteData.unlockedAchievements || prev.unlockedAchievements,
+        }));
       } else {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
           try {
-            setState({ ...DEFAULT_STATE, ...JSON.parse(saved) });
+            const parsed = JSON.parse(saved);
+            setState((prev) => ({ ...prev, ...parsed }));
           } catch (e) {
             console.error('Local state parse failed', e);
           }

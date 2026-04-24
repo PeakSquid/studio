@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -90,15 +91,19 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
     setIsLoading(true);
 
     try {
+      const safeLifts = state.lifts || {};
       const result = await aiCoachChat({
         query: text,
-        lifts: state.lifts,
-        overallRank: getOverallRank(state.lifts),
-        streak: state.streak,
-        workoutsCompleted: state.workoutsCompleted,
-        bodyweight: state.settings.bodyweight,
-        userName: state.settings.name,
-        chatHistory: state.chatHistory.slice(-6),
+        lifts: safeLifts,
+        overallRank: getOverallRank(safeLifts),
+        streak: state.streak || 0,
+        workoutsCompleted: state.workoutsCompleted || 0,
+        bodyweight: state.settings?.bodyweight || 180,
+        userName: state.settings?.name || 'Athlete',
+        chatHistory: (state.chatHistory || []).map(m => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content
+        })).slice(-6),
       });
       updateState(prev => ({
         ...prev,
@@ -138,7 +143,7 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
       {audioUrl && <audio ref={audioRef} src={audioUrl} className="hidden" onEnded={() => setIsVoicing(false)} />}
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-6 no-scrollbar pb-48">
-        {state.chatHistory.length === 0 && (
+        {(state.chatHistory || []).length === 0 && (
           <div className="py-20 text-center space-y-6 px-10 max-w-sm mx-auto">
             <div className="w-20 h-20 rounded-3xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent mx-auto animate-float">
               <Bot className="w-10 h-10" />
@@ -150,7 +155,7 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
           </div>
         )}
 
-        {state.chatHistory.map((m, i) => (
+        {(state.chatHistory || []).map((m, i) => (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 duration-300`}>
             <div className={cn(
               "max-w-[85%] p-4 rounded-2xl shadow-2xl relative overflow-hidden",

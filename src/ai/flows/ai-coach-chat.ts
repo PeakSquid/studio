@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI coach agent that provides personalized advice and workout plans.
@@ -5,64 +6,65 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 
 const LiftDataSchema = z.object({
-  pr: z.number().default(0).describe('Personal record for the lift in pounds.'),
-  reps: z.number().default(0).describe('Reps achieved at the personal record weight.'),
-}).passthrough();
+  pr: z.number().default(0),
+  reps: z.number().default(0),
+}).passthrough().optional();
 
 const ExerciseSchema = z.object({
-  name: z.string().describe('Name of the exercise.'),
-  sets: z.number().describe('Number of sets for the exercise.'),
-  reps: z.string().describe('Number of reps for the exercise, can be a range like "8-12".'),
-  weight: z.number().describe('Suggested weight for the exercise in pounds.'),
+  name: z.string(),
+  sets: z.number(),
+  reps: z.string(),
+  weight: z.number(),
 });
 
 const WorkoutSchema = z.object({
-  name: z.string().describe('Name of the workout.'),
-  type: z.enum(['push', 'pull', 'legs', 'upper', 'lower', 'full', 'rest']).describe('Type of workout.'),
-  focus: z.string().describe('Muscle groups or training focus.'),
-  duration: z.number().describe('Estimated duration in minutes.'),
-  xp: z.number().describe('Experience points earned.'),
-  exercises: z.array(ExerciseSchema).describe('List of exercises.'),
+  name: z.string(),
+  type: z.enum(['push', 'pull', 'legs', 'upper', 'lower', 'full', 'rest']),
+  focus: z.string(),
+  duration: z.number(),
+  xp: z.number(),
+  exercises: z.array(ExerciseSchema),
 });
 
 const PlanBlockSchema = z.object({
-  name: z.string().describe('Name of the training block.'),
-  desc: z.string().describe('Description of the training block.'),
+  name: z.string(),
+  desc: z.string(),
 });
 
 const PlanGoalSchema = z.object({
-  lift: z.string().describe('Name of the lift.'),
-  start: z.number().describe('Starting PR.'),
-  target: z.number().describe('Target PR.'),
+  lift: z.string(),
+  start: z.number(),
+  target: z.number(),
 });
 
 const WorkoutPlanSchema = z.object({
-  totalWeeks: z.number().describe('Total number of weeks for the plan.'),
-  blocks: z.array(PlanBlockSchema).describe('Breakdown of training blocks.'),
-  schedule: z.record(z.enum(['push', 'pull', 'legs', 'upper', 'lower', 'full', 'rest'])).describe('Weekly schedule (0-6).'),
-  workouts: z.array(WorkoutSchema).describe('Detailed definitions.'),
-  goals: z.array(PlanGoalSchema).describe('Target records.'),
+  totalWeeks: z.number(),
+  blocks: z.array(PlanBlockSchema),
+  schedule: z.record(z.enum(['push', 'pull', 'legs', 'upper', 'lower', 'full', 'rest'])),
+  workouts: z.array(WorkoutSchema),
+  goals: z.array(PlanGoalSchema),
 });
 
 const AICoachChatInputSchema = z.object({
-  query: z.string().describe('The user\'s message.'),
-  lifts: z.record(z.string(), LiftDataSchema).default({}).describe('Current records.'),
-  overallRank: z.string().describe('The user\'s rank.'),
-  streak: z.number().describe('User\'s streak.'),
-  workoutsCompleted: z.number().describe('Total workouts.'),
-  bodyweight: z.number().describe('User bodyweight.'),
-  userName: z.string().describe('User name.'),
+  query: z.string().catch(''),
+  lifts: z.record(z.any()).optional().default({}),
+  overallRank: z.string().optional().default('Bronze'),
+  streak: z.number().optional().default(0),
+  workoutsCompleted: z.number().optional().default(0),
+  bodyweight: z.number().optional().default(180),
+  userName: z.string().optional().default('Athlete'),
   chatHistory: z.array(z.object({
     role: z.enum(['user', 'assistant']),
     content: z.string(),
-  })),
+  })).optional().default([]),
 });
 export type AICoachChatInput = z.infer<typeof AICoachChatInputSchema>;
 
 const InternalAICoachPromptSchema = AICoachChatInputSchema.extend({
-  liftsSummary: z.string(),
+  liftsSummary: z.string().default('No data recorded.'),
 });
 
 const AICoachChatOutputSchema = z.object({
@@ -76,7 +78,7 @@ const generateWorkoutPlanTool = ai.defineTool(
     name: 'generateWorkoutPlan',
     description: 'Generates a 12-week plan. Call when user asks for a plan, program, or schedule.',
     inputSchema: z.object({
-      lifts: z.record(z.string(), z.number()).optional().default({}),
+      lifts: z.record(z.number()).optional().default({}),
     }),
     outputSchema: WorkoutPlanSchema,
   },
@@ -123,6 +125,7 @@ const generateWorkoutPlanTool = ai.defineTool(
 
 const aiCoachPrompt = ai.definePrompt({
   name: 'aiCoachPrompt',
+  model: googleAI.model('gemini-1.5-flash'),
   input: {schema: InternalAICoachPromptSchema},
   output: {schema: AICoachChatOutputSchema},
   tools: [generateWorkoutPlanTool],
@@ -152,14 +155,14 @@ const aiCoachChatFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const lifts = input.lifts || {};
-      const liftsSummary = Object.entries(lifts)
-        .map(([l, d]) => `${l}: ${d?.pr || 0}lb`)
+      const safeLifts = input.lifts || {};
+      const liftsSummary = Object.entries(safeLifts)
+        .map(([l, d]: [string, any]) => `${l}: ${d?.pr || 0}lb`)
         .join(', ') || 'No data recorded.';
 
       const { output } = await aiCoachPrompt({
         ...input,
-        lifts,
+        lifts: safeLifts,
         liftsSummary,
       });
 
