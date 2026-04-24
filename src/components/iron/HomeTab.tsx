@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { IronState } from '@/types/iron';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Settings, Zap, Clock, Cloud, Volume2, Square, Brain, Terminal, Shield } from 'lucide-react';
+import { Settings, Zap, Clock, Cloud, Volume2, Square, Brain, Terminal, Shield, Activity } from 'lucide-react';
 import { MUSCLES } from '@/lib/constants';
 import { getOverallRank, getOverallRankProgress, getNearestMilestone, getCNSFatigue, getAthleteLevel } from '@/lib/iron-utils';
 import { getTacticalVoice } from '@/ai/flows/ai-coach-voice-flow';
@@ -95,11 +95,11 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
       <header className="flex items-end justify-between mb-8">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Shield className="w-3.5 h-3.5 text-accent" />
+            <Shield className="w-3.5 h-3.5 text-accent animate-pulse-soft" />
             <p className="eyebrow">{name} · {rank} Class</p>
             {isSyncing && <Cloud className="w-3 h-3 text-accent animate-pulse" />}
           </div>
-          <h1 className="hero-title">Iron<span className="text-accent">Rank</span></h1>
+          <h1 className="hero-title text-6xl">Iron<span className="text-accent">Rank</span></h1>
         </div>
         <div className="flex gap-2">
           <button 
@@ -129,82 +129,88 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
         />
       )}
 
-      <Card className="p-5 mb-6 glass-card border-accent/20 relative overflow-hidden group">
-        <div className="scanline" />
-        <div className="flex justify-between items-end mb-3">
-          <div>
-            <div className="text-[10px] text-accent font-black uppercase tracking-widest mb-1">Neural Capacity</div>
-            <div className="font-headline text-4xl leading-none">Level <span className="text-accent">{level}</span></div>
+      <div className="grid grid-cols-1 gap-4 mb-6">
+        <Card className="p-5 glass-card border-accent/20 relative overflow-hidden group">
+          <div className="scanline" />
+          <div className="flex justify-between items-end mb-4">
+            <div>
+              <div className="hud-label mb-1">Neural Capacity</div>
+              <div className="font-headline text-5xl leading-none tracking-tighter italic">Level <span className="text-accent">{level}</span></div>
+            </div>
+            <div className="text-right">
+              <div className="hud-label mb-1">Athlete XP</div>
+              <div className="text-sm font-bold text-accent">{state.xp || 0}</div>
+            </div>
           </div>
-          <div className="text-right text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-            {state.xp || 0} Total XP
+          <Progress value={levelProgress} className="h-2 bg-background/50 mb-1" />
+          <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-muted-foreground/30">
+            <span>SYNC NODE {level}</span>
+            <span>NEXT CALIBRATION</span>
           </div>
-        </div>
-        <Progress value={levelProgress} className="h-2 bg-background/50 mb-1" />
-        <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-muted-foreground/40">
-          <span>Lvl {level}</span>
-          <span>Next Node Calibration</span>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       {dailyTip && (
         <section className="mb-6">
           <h3 className="section-header">Tactical Intel</h3>
-          <Card className="p-4 bg-secondary border-accent/10 border-l-2 border-l-accent relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-2 opacity-5">
-              <Terminal className="w-8 h-8 text-accent" />
+          <Card className="p-5 bg-secondary border-accent/10 border-l-4 border-l-accent relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+              <Terminal className="w-10 h-10 text-accent" />
             </div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="bg-accent/10 text-accent text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="bg-accent/10 text-accent text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-[2px] border border-accent/20">
                 {dailyTip.category}
               </span>
             </div>
-            <h4 className="font-bold text-sm mb-1">{dailyTip.title}</h4>
-            <p className="text-xs text-muted-foreground leading-relaxed italic">"{dailyTip.content}"</p>
+            <h4 className="font-bold text-sm mb-2 group-hover:text-accent transition-colors">{dailyTip.title}</h4>
+            <p className="text-xs text-muted-foreground leading-relaxed italic font-medium">"{dailyTip.content}"</p>
           </Card>
         </section>
       )}
 
       <div className="grid grid-cols-2 gap-3 mb-6">
-        <Card className="p-4 glass-card">
-          <p className="eyebrow flex items-center gap-2"><Zap className="w-3 h-3 text-accent" /> Streak</p>
-          <div className="flex items-center gap-2">
-            <span className="font-headline text-3xl">{state.streak}</span>
-            <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest">Days</span>
+        <Card className="p-5 glass-card group">
+          <p className="eyebrow flex items-center gap-2 group-hover:text-accent transition-colors"><Zap className="w-3.5 h-3.5" /> Streak</p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="font-headline text-4xl italic">{state.streak}</span>
+            <span className="hud-label">Days</span>
           </div>
         </Card>
-        <Card className="p-4 glass-card">
-          <p className="eyebrow flex items-center gap-2"><Brain className="w-3 h-3 text-accent" /> CNS Load</p>
-          <div className="flex items-center gap-2">
-            <span className="font-headline text-3xl">{cnsLoad}</span>
-            <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest">%</span>
+        <Card className="p-5 glass-card group">
+          <p className="eyebrow flex items-center gap-2 group-hover:text-accent transition-colors"><Brain className="w-3.5 h-3.5" /> CNS Load</p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="font-headline text-4xl italic">{cnsLoad}</span>
+            <span className="hud-label">%</span>
           </div>
         </Card>
       </div>
 
-      <Card className="p-5 mb-8 glass-card border-white/5">
-        <div className="flex justify-between items-end mb-3">
+      <Card className="p-5 mb-8 glass-card border-white/5 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-1 h-full bg-accent/20" />
+        <div className="flex justify-between items-end mb-4">
           <div>
-            <div className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Rank Progression</div>
-            <div className="font-headline text-3xl leading-none">Chasing <span className="text-accent">{nextRank}</span></div>
+            <div className="hud-label mb-1">Rank Projection</div>
+            <div className="font-headline text-4xl leading-none italic">Target <span className="text-accent">{nextRank}</span></div>
           </div>
           <div className="text-right">
-             <div className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Status</div>
-            <div className="text-xs font-bold text-accent">{remaining} Needed</div>
+             <div className="hud-label mb-1">Status</div>
+            <div className="text-xs font-bold text-accent">{remaining} Objectives</div>
           </div>
         </div>
         <Progress value={rankProgress} className="h-2 bg-background/50 mb-2" />
-        <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">
-          <span>{rank} Class</span>
-          <span>{nextRank} Tier</span>
+        <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-muted-foreground/40">
+          <span>{rank} Tier</span>
+          <span>{rankProgress}% Manifested</span>
         </div>
       </Card>
 
       <section>
         <h3 className="section-header">Biological Status</h3>
-        <Card className="p-8 glass-card flex flex-col items-center">
-          <div className="relative w-full max-w-[200px] mb-10 opacity-80">
-            <svg viewBox="0 0 100 150" className="w-full h-auto">
+        <Card className="p-8 glass-card flex flex-col items-center relative overflow-hidden">
+          <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+          <div className="relative w-full max-w-[220px] mb-12 animate-float">
+            <div className="absolute inset-0 bg-accent/5 blur-3xl rounded-full" />
+            <svg viewBox="0 0 100 150" className="w-full h-auto relative z-10">
               <path d="M30 40 Q50 35 70 40 L65 55 Q50 60 35 55 Z" className={`muscle-map-path ${getRecoveryInfo('Chest').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
               <circle cx="25" cy="45" r="8" className={`muscle-map-path ${getRecoveryInfo('Shoulders').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
               <circle cx="75" cy="45" r="8" className={`muscle-map-path ${getRecoveryInfo('Shoulders').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
@@ -214,18 +220,18 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
               <path d="M65 95 L70 140 L55 140 L52 95 Z" className={`muscle-map-path ${getRecoveryInfo('Legs').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
             </svg>
           </div>
-          <div className="grid grid-cols-1 gap-2 w-full">
+          <div className="grid grid-cols-1 gap-3 w-full relative z-10">
             {Object.keys(MUSCLES).map(m => {
               const info = getRecoveryInfo(m);
               return (
-                <div key={m} className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/5">
+                <div key={m} className="flex items-center justify-between bg-white/5 p-4 rounded-xl border border-white/5 hover:bg-white/10 transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className={cn("w-2 h-2 rounded-full", info.status === 'Optimal' ? 'bg-accent shadow-[0_0_8px_rgba(var(--accent),0.4)]' : 'bg-orange-500')} />
-                    <span className="text-[10px] font-black uppercase tracking-[2px] text-muted-foreground">{m}</span>
+                    <div className={cn("w-2 h-2 rounded-full", info.status === 'Optimal' ? 'bg-accent shadow-[0_0_10px_rgba(var(--accent),0.6)]' : 'bg-orange-500 animate-pulse')} />
+                    <span className="text-[10px] font-black uppercase tracking-[3px] text-muted-foreground">{m}</span>
                   </div>
                   <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
                     {info.status === 'Optimal' ? (
-                      <span className="text-accent opacity-80">Ready</span>
+                      <span className="text-accent/80 flex items-center gap-1.5"><Activity className="w-3 h-3" /> Ready</span>
                     ) : (
                       <span className="text-orange-500/80 flex items-center gap-1.5"><Clock className="w-3 h-3" /> {info.time}</span>
                     )}
