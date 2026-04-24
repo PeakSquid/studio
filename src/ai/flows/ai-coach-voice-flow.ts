@@ -15,10 +15,16 @@ async function toWav(
   sampleWidth = 2
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    // @ts-ignore - handling potential CJS/ESM interop issues with wav package
-    const Writer = (wav.default ? wav.default.Writer : wav.Writer);
+    // Handling potential CJS/ESM interop issues with wav package in Turbopack/Next.js
+    // @ts-ignore
+    const WriterClass = (wav.default && wav.default.Writer) ? wav.default.Writer : (wav.Writer || wav.default);
     
-    const writer = new Writer({
+    if (!WriterClass) {
+      reject(new Error('Could not find wav.Writer class'));
+      return;
+    }
+
+    const writer = new WriterClass({
       channels,
       sampleRate: rate,
       bitDepth: sampleWidth * 8,
