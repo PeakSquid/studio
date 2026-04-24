@@ -32,11 +32,14 @@ const DEFAULT_STATE: IronState = {
   weekStart: null,
 };
 
+// Key versioning ensures a clean reset for the user if necessary
+const STORAGE_KEY = 'ironrank_state_v9';
+
 export function useIronState() {
   const { user, isUserLoading } = useUser();
   const db = useFirestore();
   
-  // Stabilize the document reference using our custom memo hook
+  // Stabilize the document reference
   const userDocRef = useMemoFirebase(() => {
     if (!db || !user) return null;
     return doc(db, 'users', user.uid);
@@ -53,7 +56,7 @@ export function useIronState() {
       if (remoteData) {
         setState({ ...DEFAULT_STATE, ...remoteData });
       } else {
-        const saved = localStorage.getItem('ironrank_state_v8');
+        const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
           try {
             setState({ ...DEFAULT_STATE, ...JSON.parse(saved) });
@@ -66,7 +69,7 @@ export function useIronState() {
     }
   }, [remoteData, isRemoteLoading, isUserLoading]);
 
-  // Unified sync function for cloud and local storage
+  // Unified sync function
   const updateState = (updater: (prev: IronState) => IronState) => {
     setState((prev) => {
       let next = updater(prev);
@@ -76,10 +79,10 @@ export function useIronState() {
         next = { ...next, id: user.uid };
       }
       
-      // Persist locally for offline durability
-      localStorage.setItem('ironrank_state_v8', JSON.stringify(next));
+      // Persist locally
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       
-      // Perform non-blocking cloud synchronization
+      // Cloud synchronization
       if (userDocRef) {
         setDocumentNonBlocking(userDocRef, next, { merge: true });
       }

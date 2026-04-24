@@ -46,7 +46,6 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
     return { status: 'Fatigued', time: `READY IN ${diffHours}H` };
   };
 
-  const todaysWorkout = getTodaysWorkout(state);
   const volumeData = state.volumeHistory.slice(-7).map((v) => ({ val: v.volume }));
 
   return (
@@ -201,12 +200,4 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
       />
     </div>
   );
-}
-
-function getTodaysWorkout(state: IronState) {
-  if (!state.plan) return null;
-  const dow = new Date().getDay().toString();
-  const type = state.plan.schedule[dow];
-  if (!type || type === 'rest') return null;
-  return state.plan.workouts.find(w => w.type === type) || null;
 }

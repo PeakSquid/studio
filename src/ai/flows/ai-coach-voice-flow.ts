@@ -2,14 +2,17 @@
 'use server';
 /**
  * @fileOverview A flow that converts tactical coaching text into audio.
- * Includes dynamic handling for wav module interop.
+ * Includes robust module resolution for the wav package to ensure server stability.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 
-// Custom utility to handle PCM to WAV conversion with robust module loading
+/**
+ * Converts raw PCM audio data into a standard WAV format.
+ * Uses dynamic import to handle CommonJS/ESM interop in Turbopack environments.
+ */
 async function toWav(
   pcmData: Buffer,
   channels = 1,
@@ -18,25 +21,26 @@ async function toWav(
 ): Promise<string> {
   return new Promise(async (resolve, reject) => {
     try {
-      // Dynamic import to handle Turbopack module resolution quirks
-      const wav = await import('wav');
+      // Dynamic import to handle potential resolution issues during compilation
+      const wavModule = await import('wav');
       
-      // Determine the correct constructor based on environment interop
-      // @ts-ignore
-      const WriterClass = (wav.default && wav.default.Writer) ? wav.default.Writer : (wav.Writer || wav.default);
-      
-      if (!WriterClass) {
-        throw new Error('Tactical Audio Failure: wav.Writer constructor not found.');
+      // Robustly determine the correct constructor for the WAV writer
+      const Writer = (wavModule.default && (wavModule.default as any).Writer) 
+        || (wavModule as any).Writer 
+        || wavModule.default;
+
+      if (!Writer) {
+        throw new Error('Tactical Audio Serialization Failure: wav.Writer constructor unavailable.');
       }
 
-      const writer = new WriterClass({
+      const writer = new Writer({
         channels,
         sampleRate: rate,
         bitDepth: sampleWidth * 8,
       });
 
       let bufs = [] as any[];
-      writer.on('error', (err: any) => reject(new Error(`WAV Serialization Failed: ${err.message}`)));
+      writer.on('error', (err: any) => reject(new Error(`WAV Stream Error: ${err.message}`)));
       writer.on('data', function (d: any) {
         bufs.push(d);
       });
@@ -47,7 +51,7 @@ async function toWav(
       writer.write(pcmData);
       writer.end();
     } catch (err: any) {
-      reject(new Error(`Tactical Audio Initialization Failed: ${err.message}`));
+      reject(new Error(`Tactical Audio Initialization Error: ${err.message}`));
     }
   });
 }
