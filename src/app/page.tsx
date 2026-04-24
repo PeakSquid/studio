@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useIronState } from '@/hooks/use-iron-state';
 import HomeTab from '@/components/iron/HomeTab';
 import LiftsTab from '@/components/iron/LiftsTab';
@@ -10,7 +11,9 @@ import PlanTab from '@/components/iron/PlanTab';
 import TabNavigation from '@/components/iron/TabNavigation';
 import WorkoutModal from '@/components/iron/WorkoutModal';
 import PRLogModal from '@/components/iron/PRLogModal';
+import Onboarding from '@/components/iron/Onboarding';
 import { Plus } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function IronRankApp() {
   const { state, updateState, isLoaded } = useIronState();
@@ -18,7 +21,19 @@ export default function IronRankApp() {
   const [isWorkoutOpen, setIsWorkoutOpen] = useState(false);
   const [isPRLogOpen, setIsPRLogOpen] = useState(false);
 
+  useEffect(() => {
+    if (state.settings.theme === 'stealth') {
+      document.body.classList.add('stealth');
+    } else {
+      document.body.classList.remove('stealth');
+    }
+  }, [state.settings.theme]);
+
   if (!isLoaded) return null;
+
+  if (!state.onboardingComplete) {
+    return <Onboarding state={state} updateState={updateState} />;
+  }
 
   const renderTab = () => {
     switch (activeTab) {
@@ -32,7 +47,10 @@ export default function IronRankApp() {
   };
 
   return (
-    <div className="flex flex-col h-full w-full max-w-md mx-auto relative shadow-2xl bg-background overflow-hidden">
+    <div className={cn(
+      "flex flex-col h-full w-full max-w-md mx-auto relative shadow-2xl bg-background overflow-hidden",
+      state.settings.theme === 'stealth' && 'stealth'
+    )}>
       <main className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar">
         {renderTab()}
       </main>
@@ -41,9 +59,9 @@ export default function IronRankApp() {
       {(activeTab === 'home' || activeTab === 'lifts') && (
         <button 
           onClick={() => setIsPRLogOpen(true)}
-          className="fixed right-6 bottom-28 w-16 h-16 rounded-3xl bg-accent text-accent-foreground flex items-center justify-center shadow-[0_8px_30px_rgba(232,255,58,0.4)] z-50 transition-all active:scale-90 hover:scale-105"
+          className="fixed left-1/2 -translate-x-1/2 bottom-24 w-14 h-14 rounded-2xl bg-accent text-accent-foreground flex items-center justify-center shadow-[0_8px_30px_rgba(0,0,0,0.4)] z-50 transition-all active:scale-90 hover:scale-105 border-4 border-background"
         >
-          <Plus className="w-9 h-9 stroke-[3]" />
+          <Plus className="w-8 h-8 stroke-[3]" />
         </button>
       )}
 

@@ -1,14 +1,15 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { IronState } from '@/types/iron';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Settings, Zap, Target, TrendingUp, ChevronRight, Activity } from 'lucide-react';
-import { MUSCLES, MUSCLE_ICONS } from '@/lib/constants';
+import { Settings, Zap, Activity, TrendingUp } from 'lucide-react';
+import { MUSCLES } from '@/lib/constants';
 import { getOverallRank, getMuscleRank, getOverallRankProgress } from '@/lib/iron-utils';
 import SettingsModal from './SettingsModal';
+import { LineChart, Line, ResponsiveContainer } from 'recharts';
 
 type HomeTabProps = {
   state: IronState;
@@ -30,11 +31,13 @@ export default function HomeTab({ state, onStartWorkout, updateState }: HomeTabP
     const now = new Date();
     const target = new Date(recoveryTime);
     if (now >= target) return 'Optimal';
-    return 'Recovering';
+    return 'Fatigued';
   };
 
+  const volumeData = state.volumeHistory.slice(-7).map((v, i) => ({ val: v.volume }));
+
   return (
-    <div className="p-6 pt-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-32">
+    <div className="p-6 pt-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-40">
       <header className="flex items-end justify-between mb-8">
         <div>
           <p className="eyebrow">{name} · {rank} Class</p>
@@ -67,106 +70,82 @@ export default function HomeTab({ state, onStartWorkout, updateState }: HomeTabP
         </div>
       </Card>
 
-      {/* Streak & Activity */}
-      <Card className="p-5 mb-6 bg-secondary/30 border-border overflow-hidden group">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center text-accent">
-              <Zap className="w-5 h-5 fill-current" />
-            </div>
-            <div>
-              <div className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">Current Streak</div>
-              <div className="font-headline text-3xl leading-none">{state.streak} Days</div>
-            </div>
+      {/* Performance Briefing */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <Card className="p-4 bg-secondary/30 border-border">
+          <p className="eyebrow">Streak</p>
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-accent fill-current" />
+            <span className="font-headline text-3xl">{state.streak}</span>
           </div>
-          <div className="text-right">
-            <div className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">Workouts</div>
-            <div className="font-headline text-3xl leading-none">{state.workoutsCompleted}</div>
+        </Card>
+        <Card className="p-4 bg-secondary/30 border-border overflow-hidden">
+          <p className="eyebrow">Trend</p>
+          <div className="h-8 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={volumeData.length > 0 ? volumeData : [{val:0},{val:5},{val:3},{val:8}]}>
+                <Line type="monotone" dataKey="val" stroke="hsl(var(--accent))" strokeWidth={3} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
-        </div>
-        <div className="dot-grid">
-          {state.activity.map((v, i) => (
-            <div key={i} className={`dot ${v === 2 ? 'dot-active' : v === 1 ? 'dot-half' : ''}`} />
-          ))}
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       {/* Today's Workout */}
       <section className="mb-10">
-        <h3 className="section-header">Next Training Session</h3>
+        <h3 className="section-header">Tactical Objective</h3>
         {todaysWorkout ? (
           <Card className="p-6 bg-secondary border-border relative overflow-hidden group transition-all hover:border-accent/40">
             <div className="absolute -right-8 -top-8 w-32 h-32 bg-accent/5 rounded-full blur-3xl group-hover:bg-accent/10 transition-colors" />
-            
-            <div className="inline-block bg-accent text-accent-foreground text-[10px] font-black uppercase tracking-[2px] px-2 py-1 rounded-sm mb-4">
-              Tactical Program
-            </div>
-            
             <h2 className="font-headline text-4xl leading-none mb-1 group-hover:text-accent transition-colors">{todaysWorkout.name}</h2>
-            <p className="text-sm text-muted-foreground mb-6">{todaysWorkout.focus}</p>
-            
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="p-3 bg-background/50 rounded-xl border border-border/50">
-                <div className="font-headline text-2xl leading-none">{todaysWorkout.exercises.length}</div>
-                <div className="text-[9px] text-muted-foreground font-black uppercase tracking-wider">Moves</div>
-              </div>
-              <div className="p-3 bg-background/50 rounded-xl border border-border/50">
-                <div className="font-headline text-2xl leading-none">{todaysWorkout.duration}m</div>
-                <div className="text-[9px] text-muted-foreground font-black uppercase tracking-wider">Time</div>
-              </div>
-              <div className="p-3 bg-background/50 rounded-xl border border-border/50">
-                <div className="font-headline text-2xl leading-none text-accent">+{todaysWorkout.xp}</div>
-                <div className="text-[9px] text-muted-foreground font-black uppercase tracking-wider">XP</div>
-              </div>
-            </div>
-
+            <p className="text-sm text-muted-foreground mb-6 font-bold uppercase tracking-tighter">{todaysWorkout.focus}</p>
             <button 
               onClick={onStartWorkout}
-              className="w-full bg-accent text-accent-foreground font-black uppercase tracking-widest text-sm py-4 rounded-xl transition-all active:scale-[0.98] shadow-[0_0_25px_rgba(232,255,58,0.2)] flex items-center justify-center gap-3"
+              className="w-full bg-accent text-accent-foreground font-black uppercase tracking-widest text-sm py-4 rounded-xl transition-all active:scale-[0.98] shadow-[0_0_25px_rgba(var(--accent),0.2)]"
             >
-              Enter the Cage <Zap className="w-4 h-4 fill-current" />
+              Initialize Session
             </button>
           </Card>
         ) : (
-          <Card className="p-12 bg-secondary/50 border-dashed border-2 border-border flex flex-col items-center text-center">
-            <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center text-3xl mb-4 animate-float">🧘</div>
-            <h2 className="font-headline text-3xl leading-none mb-2">Rest Phase</h2>
-            <p className="text-sm text-muted-foreground max-w-[200px]">Recovery is where tissue repairs. Check your Plan for tomorrow.</p>
+          <Card className="p-8 bg-secondary/20 border-dashed border-2 border-border flex flex-col items-center text-center">
+            <h2 className="font-headline text-3xl leading-none mb-2">Passive Phase</h2>
+            <p className="text-xs text-muted-foreground uppercase font-black">Rest Recommended</p>
           </Card>
         )}
       </section>
 
-      {/* Muscles Section */}
+      {/* Visual Muscle Map */}
       <section>
         <h3 className="section-header">Biological Status</h3>
-        <div className="grid grid-cols-1 gap-3">
-          {Object.keys(MUSCLES).map((muscle) => {
-            const mRank = getMuscleRank(muscle, state.lifts);
-            const status = getRecoveryStatus(muscle);
-            const isRecovering = status === 'Recovering';
-            
-            return (
-              <div key={muscle} className="p-4 bg-secondary/40 border border-border rounded-2xl flex items-center gap-4 group hover:bg-secondary/60 transition-all">
-                <div className="w-12 h-12 rounded-xl bg-background border border-border flex items-center justify-center text-2xl group-hover:scale-110 transition-transform relative">
-                  {MUSCLE_ICONS[muscle as keyof typeof MUSCLE_ICONS]}
-                  {isRecovering && (
-                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full animate-pulse border-2 border-background" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div className="font-bold text-sm tracking-tight flex items-center gap-2">
-                    {muscle}
-                    <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${isRecovering ? 'bg-orange-500/10 text-orange-500' : 'bg-green-500/10 text-green-500'}`}>
-                      {status}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-muted-foreground font-medium">Rank {mRank} Standards</div>
-                </div>
-                <Activity className={`w-4 h-4 ${isRecovering ? 'text-orange-500/40' : 'text-green-500/40'}`} />
+        <Card className="p-8 bg-secondary/30 border-border flex flex-col items-center">
+          <div className="relative w-full max-w-[200px] mb-8">
+            <svg viewBox="0 0 100 150" className="w-full h-auto">
+              {/* Chest */}
+              <path d="M30 40 Q50 35 70 40 L65 55 Q50 60 35 55 Z" className={`muscle-map-path ${getRecoveryStatus('Chest') === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+              {/* Abs */}
+              <path d="M40 60 L60 60 L58 90 L42 90 Z" className="muscle-map-path" />
+              {/* Shoulders */}
+              <circle cx="25" cy="45" r="8" className={`muscle-map-path ${getRecoveryStatus('Shoulders') === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+              <circle cx="75" cy="45" r="8" className={`muscle-map-path ${getRecoveryStatus('Shoulders') === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+              {/* Arms */}
+              <path d="M20 55 L15 90 L25 90 L28 55 Z" className={`muscle-map-path ${getRecoveryStatus('Arms') === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+              <path d="M80 55 L85 90 L75 90 L72 55 Z" className={`muscle-map-path ${getRecoveryStatus('Arms') === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+              {/* Legs */}
+              <path d="M35 95 L30 140 L45 140 L48 95 Z" className={`muscle-map-path ${getRecoveryStatus('Legs') === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+              <path d="M65 95 L70 140 L55 140 L52 95 Z" className={`muscle-map-path ${getRecoveryStatus('Legs') === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
+            </svg>
+          </div>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-2 w-full text-[10px] font-black uppercase tracking-widest">
+            {Object.keys(MUSCLES).map(m => (
+              <div key={m} className="flex items-center justify-between border-b border-border/40 pb-1">
+                <span className="text-muted-foreground">{m}</span>
+                <span className={getRecoveryStatus(m) === 'Optimal' ? 'text-accent' : 'text-orange-500'}>
+                  {getRecoveryStatus(m)}
+                </span>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        </Card>
       </section>
 
       <SettingsModal 

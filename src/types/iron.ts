@@ -37,5 +37,7 @@ export type IronState = {
   };
   muscleRecovery: Record<string, string>; // muscle -> ISO timestamp of expected full recovery
   totalVolume: number; // total pounds moved in last workout
+  volumeHistory: { date: string; volume: number }[];
+  onboardingComplete: boolean;
   weekStart: string | null;
 };

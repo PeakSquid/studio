@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { IronState } from '@/types/iron';
 
-const STORAGE_KEY = 'ironrank_state_v4';
+const STORAGE_KEY = 'ironrank_state_v6'; // Incremented for new feature support
 
 const DEFAULT_STATE: IronState = {
   lifts: {
@@ -22,6 +23,8 @@ const DEFAULT_STATE: IronState = {
   settings: { unit: 'lb', name: '', bodyweight: 0, theme: 'iron' },
   muscleRecovery: {},
   totalVolume: 0,
+  volumeHistory: [],
+  onboardingComplete: false,
   weekStart: null,
 };
 
