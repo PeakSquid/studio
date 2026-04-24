@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { IronState } from '@/types/iron';
-import { useFirestore, useUser, useDoc } from '@/firebase';
+import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
@@ -36,23 +36,24 @@ export function useIronState() {
   const { user, isUserLoading } = useUser();
   const db = useFirestore();
   
-  const userDocRef = useMemo(() => {
+  // Stabilize the document reference using our custom memo hook
+  const userDocRef = useMemoFirebase(() => {
     if (!db || !user) return null;
     return doc(db, 'users', user.uid);
-  }, [db, user]);
+  }, [db, user?.uid]);
 
   const { data: remoteData, isLoading: isRemoteLoading } = useDoc(userDocRef);
   
   const [state, setState] = useState<IronState>(DEFAULT_STATE);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Initial load from remote or local fallback
+  // Initial load logic: Prioritize remote data, fallback to local storage
   useEffect(() => {
     if (!isUserLoading && !isRemoteLoading) {
       if (remoteData) {
         setState({ ...DEFAULT_STATE, ...remoteData });
       } else {
-        const saved = localStorage.getItem('ironrank_state_v7');
+        const saved = localStorage.getItem('ironrank_state_v8');
         if (saved) {
           try {
             setState({ ...DEFAULT_STATE, ...JSON.parse(saved) });
@@ -65,23 +66,21 @@ export function useIronState() {
     }
   }, [remoteData, isRemoteLoading, isUserLoading]);
 
-  // Sync updates to remote (non-blocking) and local
+  // Unified sync function for cloud and local storage
   const updateState = (updater: (prev: IronState) => IronState) => {
     setState((prev) => {
       let next = updater(prev);
       
-      // Ensure ID is set for Firestore synchronization and rule compliance
+      // Enforce security rule consistency: Ensure athlete ID is in the document
       if (user && next.id !== user.uid) {
         next = { ...next, id: user.uid };
       }
       
-      // Save local for offline
-      localStorage.setItem('ironrank_state_v7', JSON.stringify(next));
+      // Persist locally for offline durability
+      localStorage.setItem('ironrank_state_v8', JSON.stringify(next));
       
-      // Sync to Firestore if logged in
+      // Perform non-blocking cloud synchronization
       if (userDocRef) {
-        // Use setDocumentNonBlocking to allow initial creation (method: create) 
-        // and ensure fields like 'id' are included in the merge.
         setDocumentNonBlocking(userDocRef, next, { merge: true });
       }
       

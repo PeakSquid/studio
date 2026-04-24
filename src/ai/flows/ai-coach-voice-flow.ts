@@ -1,46 +1,54 @@
+
 'use server';
 /**
  * @fileOverview A flow that converts tactical coaching text into audio.
+ * Includes dynamic handling for wav module interop.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
-import * as wav from 'wav';
 
+// Custom utility to handle PCM to WAV conversion with robust module loading
 async function toWav(
   pcmData: Buffer,
   channels = 1,
   rate = 24000,
   sampleWidth = 2
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
-    // Handling potential CJS/ESM interop issues with wav package in Turbopack/Next.js
-    // @ts-ignore
-    const WriterClass = (wav.default && wav.default.Writer) ? wav.default.Writer : (wav.Writer || wav.default);
-    
-    if (!WriterClass) {
-      reject(new Error('Could not find wav.Writer class'));
-      return;
+  return new Promise(async (resolve, reject) => {
+    try {
+      // Dynamic import to handle Turbopack module resolution quirks
+      const wav = await import('wav');
+      
+      // Determine the correct constructor based on environment interop
+      // @ts-ignore
+      const WriterClass = (wav.default && wav.default.Writer) ? wav.default.Writer : (wav.Writer || wav.default);
+      
+      if (!WriterClass) {
+        throw new Error('Tactical Audio Failure: wav.Writer constructor not found.');
+      }
+
+      const writer = new WriterClass({
+        channels,
+        sampleRate: rate,
+        bitDepth: sampleWidth * 8,
+      });
+
+      let bufs = [] as any[];
+      writer.on('error', (err: any) => reject(new Error(`WAV Serialization Failed: ${err.message}`)));
+      writer.on('data', function (d: any) {
+        bufs.push(d);
+      });
+      writer.on('end', function () {
+        resolve(Buffer.concat(bufs).toString('base64'));
+      });
+
+      writer.write(pcmData);
+      writer.end();
+    } catch (err: any) {
+      reject(new Error(`Tactical Audio Initialization Failed: ${err.message}`));
     }
-
-    const writer = new WriterClass({
-      channels,
-      sampleRate: rate,
-      bitDepth: sampleWidth * 8,
-    });
-
-    let bufs = [] as any[];
-    writer.on('error', reject);
-    writer.on('data', function (d: any) {
-      bufs.push(d);
-    });
-    writer.on('end', function () {
-      resolve(Buffer.concat(bufs).toString('base64'));
-    });
-
-    writer.write(pcmData);
-    writer.end();
   });
 }
 
@@ -77,7 +85,7 @@ const tacticalVoiceFlow = ai.defineFlow(
     });
 
     if (!media || !media.url) {
-      throw new Error('No audio returned from Genkit.');
+      throw new Error('Communication downlink failure: No audio returned from command.');
     }
 
     const audioBuffer = Buffer.from(
@@ -85,8 +93,10 @@ const tacticalVoiceFlow = ai.defineFlow(
       'base64'
     );
 
+    const base64Wav = await toWav(audioBuffer);
+
     return {
-      media: 'data:audio/wav;base64,' + (await toWav(audioBuffer)),
+      media: 'data:audio/wav;base64,' + base64Wav,
     };
   }
 );

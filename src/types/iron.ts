@@ -21,7 +21,7 @@ export type WorkoutPlan = {
 };
 
 export type IronState = {
-  id: string;
+  id: string; // Athlete UID for security rules
   lifts: Record<string, LiftData>;
   streak: number;
   lastWorkout: string | null;

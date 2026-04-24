@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -26,6 +27,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
   const milestone = getNearestMilestone(state.lifts);
   const name = state.settings.name || 'Athlete';
   
+  // Refresh recovery countdowns every minute
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
@@ -69,7 +71,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
         </button>
       </header>
 
-      {/* Activity Matrix */}
+      {/* Consistency Matrix */}
       <section className="mb-6">
         <h3 className="section-header">Consistency Grid</h3>
         <Card className="p-4 bg-secondary/20 border-border">
@@ -82,27 +84,22 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
                   lvl === 1 && "dot-half",
                   lvl === 2 && "dot-active"
                 )}
-                title={`Day ${i + 1}`}
               />
             ))}
           </div>
           <div className="mt-3 flex justify-between items-center">
-            <div className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Last 21 Days</div>
+            <div className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Athlete Telemetry (21D)</div>
             <div className="flex gap-2 items-center">
               <div className="flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-[1px] bg-secondary" />
-                <span className="text-[8px] font-bold text-muted-foreground uppercase">Rest</span>
-              </div>
-              <div className="flex items-center gap-1">
                 <div className="w-1.5 h-1.5 rounded-[1px] bg-accent" />
-                <span className="text-[8px] font-bold text-muted-foreground uppercase">Work</span>
+                <span className="text-[8px] font-bold text-muted-foreground uppercase">Active</span>
               </div>
             </div>
           </div>
         </Card>
       </section>
 
-      {/* Rank Progress */}
+      {/* Rank Progression Card */}
       <Card className="p-5 mb-6 bg-secondary border-border overflow-hidden relative group">
         <div className="flex justify-between items-end mb-3">
           <div>
@@ -111,7 +108,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
           </div>
           <div className="text-right">
             <div className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Status</div>
-            <div className="text-xs font-bold">{remaining} Lifts to Tier Up</div>
+            <div className="text-xs font-bold">{remaining} Objectives Remaining</div>
           </div>
         </div>
         <Progress value={progress} className="h-2 bg-background mb-2" />
@@ -121,7 +118,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
         </div>
       </Card>
 
-      {/* Nearest Milestone */}
+      {/* Nearest Milestone Logic */}
       {milestone && (
         <Card className="p-4 mb-6 bg-[#1C2500] border border-[#2E3D00] flex items-center justify-between group cursor-default">
           <div className="flex items-center gap-3">
@@ -129,15 +126,15 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
               <Target className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-[9px] font-black uppercase tracking-widest text-accent/60">Next Objective</div>
-              <div className="text-xs font-bold text-accent">{milestone.name} <span className="text-muted-foreground">+{milestone.toNext}lb to {milestone.nextLabel}</span></div>
+              <div className="text-[9px] font-black uppercase tracking-widest text-accent/60">Tactical Target</div>
+              <div className="text-xs font-bold text-accent">{milestone.name} <span className="text-muted-foreground">+{milestone.toNext}lb for {milestone.nextLabel}</span></div>
             </div>
           </div>
           <ChevronRight className="w-4 h-4 text-accent/40 group-hover:text-accent transition-colors" />
         </Card>
       )}
 
-      {/* Performance Briefing */}
+      {/* Vitals Grid */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <Card className="p-4 bg-secondary/30 border-border">
           <p className="eyebrow">Streak</p>
@@ -147,7 +144,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
           </div>
         </Card>
         <Card className="p-4 bg-secondary/30 border-border overflow-hidden">
-          <p className="eyebrow">Trend</p>
+          <p className="eyebrow">Tonnage Trend</p>
           <div className="h-8 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={volumeData.length > 0 ? volumeData : [{val:0},{val:5},{val:3},{val:8}]}>
@@ -158,30 +155,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
         </Card>
       </div>
 
-      {/* Today's Workout */}
-      <section className="mb-10">
-        <h3 className="section-header">Tactical Objective</h3>
-        {todaysWorkout ? (
-          <Card className="p-6 bg-secondary border-border relative overflow-hidden group transition-all hover:border-accent/40">
-            <div className="absolute -right-8 -top-8 w-32 h-32 bg-accent/5 rounded-full blur-3xl group-hover:bg-accent/10 transition-colors" />
-            <h2 className="font-headline text-4xl leading-none mb-1 group-hover:text-accent transition-colors">{todaysWorkout.name}</h2>
-            <p className="text-sm text-muted-foreground mb-6 font-bold uppercase tracking-tighter">{todaysWorkout.focus}</p>
-            <button 
-              onClick={onStartWorkout}
-              className="w-full bg-accent text-accent-foreground font-black uppercase tracking-widest text-sm py-4 rounded-xl transition-all active:scale-[0.98] shadow-[0_0_25px_rgba(var(--accent),0.2)]"
-            >
-              Initialize Session
-            </button>
-          </Card>
-        ) : (
-          <Card className="p-8 bg-secondary/20 border-dashed border-2 border-border flex flex-col items-center text-center">
-            <h2 className="font-headline text-3xl leading-none mb-2">Passive Phase</h2>
-            <p className="text-xs text-muted-foreground uppercase font-black">Rest Recommended</p>
-          </Card>
-        )}
-      </section>
-
-      {/* Visual Muscle Map */}
+      {/* Biological Recovery Status */}
       <section>
         <h3 className="section-header">Biological Status</h3>
         <Card className="p-8 bg-secondary/30 border-border flex flex-col items-center">
