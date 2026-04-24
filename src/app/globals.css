@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -50,17 +49,21 @@
 }
 
 .eyebrow {
-  @apply text-[11px] font-bold tracking-[2px] uppercase text-muted-foreground mb-1;
+  @apply text-[11px] font-black tracking-[2px] uppercase text-muted-foreground/80 mb-1;
 }
 
 .section-header {
-  @apply text-xs font-black uppercase tracking-[2px] text-muted-foreground mb-4 flex items-center gap-3 after:h-px after:flex-1 after:bg-border;
+  @apply text-[10px] font-black uppercase tracking-[3px] text-muted-foreground mb-4 flex items-center gap-3 after:h-px after:flex-1 after:bg-border/50;
 }
 
-.rank-bronze { background: #CD7F32; color: #fff; }
-.rank-silver { background: #C0C0C0; color: #111; }
-.rank-gold { background: #FFD700; color: #111; }
-.rank-elite { background: #A855F7; color: #fff; }
+.glass-card {
+  @apply bg-white/[0.03] backdrop-blur-md border border-white/10;
+}
+
+.rank-bronze { background: linear-gradient(135deg, #8B4513, #CD7F32); color: #fff; }
+.rank-silver { background: linear-gradient(135deg, #708090, #C0C0C0); color: #111; }
+.rank-gold { background: linear-gradient(135deg, #B8860B, #FFD700); color: #111; }
+.rank-elite { background: linear-gradient(135deg, #6B21A8, #A855F7); color: #fff; }
 
 .dot-grid {
   display: grid;
@@ -74,10 +77,6 @@
 
 .dot-active {
   @apply bg-accent shadow-[0_0_8px_rgba(var(--accent),0.5)];
-}
-
-.dot-half {
-  @apply bg-accent/30;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -94,8 +93,24 @@
   100% { transform: translateY(0px); }
 }
 
+@keyframes scan {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(100%); }
+}
+
 .animate-float {
   animation: float 3s ease-in-out infinite;
+}
+
+.scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(to right, transparent, hsl(var(--accent)/0.2), transparent);
+  animation: scan 4s linear infinite;
+  pointer-events: none;
 }
 
 .muscle-map-path {
