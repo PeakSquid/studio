@@ -1,12 +1,14 @@
+
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { IronState } from '@/types/iron';
+import React, { useState, useEffect, useRef } from 'react';
+import { IronState, WorkoutLogEntry } from '@/types/iron';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { X, Check, ChevronLeft, ChevronRight, Zap, Calculator } from 'lucide-react';
+import { X, Check, ChevronLeft, ChevronRight, Zap, Calculator, Volume2, Square, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { calculatePlates } from '@/lib/iron-utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { getTacticalVoice } from '@/ai/flows/ai-coach-voice-flow';
 
 type WorkoutModalProps = {
   isOpen: boolean;
@@ -23,6 +25,9 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
   const [phase, setPhase] = useState<'workout' | 'done'>('workout');
   const [restTime, setRestTime] = useState(0);
   const [totalRest, setTotalRest] = useState(90);
+  const [isDebriefing, setIsDebriefing] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (workout) {
@@ -48,8 +53,6 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
   if (!workout) return null;
 
   const currentEx = workout.exercises[activeExIdx];
-  const currentSets = sets[activeExIdx] || [];
-  
   const totalSets = sets.flat().length;
   const doneSetsCount = sets.flat().filter(s => s.done).length;
   const progressPct = totalSets > 0 ? (doneSetsCount / totalSets) * 100 : 0;
@@ -68,10 +71,20 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
     setSets(newSets);
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     const sessionVolume = sets.flat().reduce((acc, s) => acc + (s.done ? (s.weight * s.reps) : 0), 0);
     const affectedMuscles = getAffectedMuscles(workout.focus);
+    const today = new Date().toISOString();
     
+    const logEntry: WorkoutLogEntry = {
+      id: Math.random().toString(36).substr(2, 9),
+      date: today,
+      name: workout.name,
+      volume: sessionVolume,
+      sets: doneSetsCount,
+      type: workout.type
+    };
+
     updateState(prev => {
       const newActivity = [...prev.activity];
       newActivity.shift();
@@ -80,22 +93,43 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
       const newRecovery = { ...prev.muscleRecovery };
       affectedMuscles.forEach(m => {
         const recoveryDate = new Date();
-        recoveryDate.setHours(recoveryDate.getHours() + 48); // Standard 48h recovery
+        recoveryDate.setHours(recoveryDate.getHours() + 48);
         newRecovery[m] = recoveryDate.toISOString();
       });
+
+      const newVolumeHistory = [
+        ...prev.volumeHistory,
+        { date: today, volume: sessionVolume }
+      ].slice(-10);
       
       return {
         ...prev,
         workoutsCompleted: prev.workoutsCompleted + 1,
+        workoutLogs: [logEntry, ...prev.workoutLogs].slice(0, 50),
         streak: prev.streak + 1,
         activity: newActivity,
-        lastWorkout: new Date().toISOString(),
+        lastWorkout: today,
         totalVolume: sessionVolume,
+        volumeHistory: newVolumeHistory,
         muscleRecovery: newRecovery
       };
     });
     
     setPhase('done');
+    
+    // Trigger AI Debriefing
+    setIsDebriefing(true);
+    try {
+      const briefText = `Mission accomplished, athlete. ${workout.name} completed. Total tonnage moved: ${sessionVolume} pounds across ${doneSetsCount} successful sets. Your central nervous system has been pushed; localized muscle fatigue is expected. 48 hour recovery window initiated. Data logged to iron cloud. Well done.`;
+      const result = await getTacticalVoice({ text: briefText });
+      setAudioUrl(result.media);
+      setTimeout(() => {
+        if (audioRef.current) audioRef.current.play();
+      }, 200);
+    } catch (e) {
+      console.error(e);
+      setIsDebriefing(false);
+    }
   };
 
   const isCompound = (name: string) => {
@@ -126,6 +160,26 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
                 <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">Total Tonnage</div>
               </div>
             </div>
+
+            <Card className="w-full p-4 mb-8 bg-secondary border-accent/20 flex items-center gap-4">
+              <div className={cn(
+                "w-12 h-12 rounded-xl flex items-center justify-center transition-all",
+                isDebriefing && !audioUrl ? "bg-accent/10" : "bg-accent text-accent-foreground"
+              )}>
+                {isDebriefing && !audioUrl ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                ) : (
+                  <Volume2 className="w-6 h-6" />
+                )}
+              </div>
+              <div className="text-left flex-1">
+                <p className="text-[10px] font-black uppercase text-accent tracking-widest">Post-Mission Debrief</p>
+                <p className="text-xs font-bold text-muted-foreground">AI Intelligence synthesized</p>
+              </div>
+              {audioUrl && (
+                <audio ref={audioRef} src={audioUrl} onEnded={() => setIsDebriefing(false)} />
+              )}
+            </Card>
 
             <button 
               onClick={onClose}
@@ -212,7 +266,7 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
           </div>
 
           <div className="space-y-3">
-            {currentSets.map((set, si) => (
+            {sets[activeExIdx]?.map((set: any, si: number) => (
               <Card 
                 key={si} 
                 className={cn(

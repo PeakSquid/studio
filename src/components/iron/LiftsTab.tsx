@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
 import { getLiftRank, getLiftProgress, getOverallRank, getRadarData } from '@/lib/iron-utils';
 import { generateSpiritTotem } from '@/ai/flows/generate-totem-flow';
-import { Loader2, Sparkles, Image as ImageIcon, TrendingUp, Scale } from 'lucide-react';
+import { Loader2, Sparkles, Image as ImageIcon, TrendingUp, Scale, History } from 'lucide-react';
 import Image from 'next/image';
 
 type LiftsTabProps = {
@@ -197,6 +197,32 @@ export default function LiftsTab({ state }: LiftsTabProps) {
               </Card>
             );
           })}
+        </div>
+      </section>
+
+      {/* Mission History */}
+      <section className="mb-10">
+        <h3 className="section-header">Mission History</h3>
+        <div className="space-y-3">
+          {state.workoutLogs.length === 0 ? (
+            <div className="text-center py-8 border-2 border-dashed border-border rounded-2xl">
+              <History className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">No deployments logged</p>
+            </div>
+          ) : (
+            state.workoutLogs.map(log => (
+              <Card key={log.id} className="p-4 bg-secondary/30 border-border flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] font-black text-accent uppercase tracking-widest mb-0.5">{log.name}</div>
+                  <div className="text-[9px] text-muted-foreground font-bold">{new Date(log.date).toLocaleDateString()} · {log.type.toUpperCase()}</div>
+                </div>
+                <div className="text-right">
+                  <div className="font-headline text-2xl">{log.volume} <span className="text-[9px] font-sans text-muted-foreground">LB</span></div>
+                  <div className="text-[9px] font-black text-muted-foreground uppercase">{log.sets} SETS</div>
+                </div>
+              </Card>
+            ))
+          )}
         </div>
       </section>
     </div>

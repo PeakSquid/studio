@@ -22,6 +22,7 @@ const DEFAULT_STATE: IronState = {
   activity: Array(21).fill(0),
   chatHistory: [],
   workoutsCompleted: 0,
+  workoutLogs: [],
   plan: null,
   unlockedAchievements: {},
   settings: { unit: 'lb', name: '', bodyweight: 0, weightHistory: [], theme: 'iron' },

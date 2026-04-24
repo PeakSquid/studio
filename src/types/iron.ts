@@ -20,6 +20,15 @@ export type WorkoutPlan = {
   goals: { lift: string; start: number; target: number }[];
 };
 
+export type WorkoutLogEntry = {
+  id: string;
+  date: string;
+  name: string;
+  volume: number;
+  sets: number;
+  type: string;
+};
+
 export type IronState = {
   id: string; // Athlete UID for security rules
   lifts: Record<string, LiftData>;
@@ -28,6 +37,7 @@ export type IronState = {
   activity: number[]; // 0: none, 1: half, 2: full
   chatHistory: { role: 'user' | 'assistant'; content: string }[];
   workoutsCompleted: number;
+  workoutLogs: WorkoutLogEntry[];
   plan: WorkoutPlan | null;
   unlockedAchievements: Record<string, string>; // id -> iso date
   settings: {
