@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -39,8 +40,10 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
   const weeklyGoal = objective.targetVolume * 4; 
   
   useEffect(() => {
-    setIsHydrated(true);
-    const timer = setInterval(() => setNow(new Date()), 60000);
+    // Slashing TBT: Defer heavy assets slightly after mount
+    const timer = setTimeout(() => setIsHydrated(true), 100);
+    const clockTimer = setInterval(() => setNow(new Date()), 60000);
+    
     const fetchTip = async () => {
       try {
         const tip = await getDailyTacticalTip();
@@ -50,7 +53,11 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
       }
     };
     fetchTip();
-    return () => clearInterval(timer);
+    
+    return () => {
+      clearTimeout(timer);
+      clearInterval(clockTimer);
+    };
   }, []);
 
   const handleCombatBriefing = async () => {
@@ -227,7 +234,6 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
         <Card className="p-8 glass-card flex flex-col items-center relative overflow-hidden">
           <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
           
-          {/* Hydration Guard for heavy SVG component */}
           {isHydrated ? (
             <div className="relative w-full max-w-[220px] mb-12 animate-float">
               <div className="absolute inset-0 bg-accent/5 blur-3xl rounded-full" />

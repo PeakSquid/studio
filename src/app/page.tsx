@@ -10,7 +10,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { Plus, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Dynamic imports for performance optimization
+// Dynamic imports with ssr: false to slash TBT by reducing hydration workload
 const HomeTab = dynamic(() => import('@/components/iron/HomeTab'), { 
   loading: () => <TabLoading />,
   ssr: false 
@@ -31,6 +31,7 @@ const PlanTab = dynamic(() => import('@/components/iron/PlanTab'), {
   loading: () => <TabLoading />,
   ssr: false 
 });
+
 const WorkoutModal = dynamic(() => import('@/components/iron/WorkoutModal'), { ssr: false });
 const PRLogModal = dynamic(() => import('@/components/iron/PRLogModal'), { ssr: false });
 const Onboarding = dynamic(() => import('@/components/iron/Onboarding'), { ssr: false });
@@ -39,7 +40,7 @@ function TabLoading() {
   return (
     <div className="flex flex-col items-center justify-center h-full w-full p-12 space-y-4">
       <Loader2 className="w-8 h-8 text-accent animate-spin" />
-      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Calibrating HUD...</p>
+      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Calibrating HUD...</p>
     </div>
   );
 }

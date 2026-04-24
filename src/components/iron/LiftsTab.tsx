@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -25,7 +26,9 @@ export default function LiftsTab({ state }: LiftsTabProps) {
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    setIsHydrated(true);
+    // Slashing TBT: Defer Recharts rendering until after hydration
+    const timer = setTimeout(() => setIsHydrated(true), 150);
+    return () => clearTimeout(timer);
   }, []);
 
   const radarData = useMemo(() => getRadarData(state.lifts), [state.lifts]);
