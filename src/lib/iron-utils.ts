@@ -50,6 +50,20 @@ export function getOverallRankProgress(lifts: Record<string, LiftData>) {
   };
 }
 
+export function getNearestMilestone(lifts: Record<string, LiftData>) {
+  let nearest = null;
+  let minDiff = Infinity;
+
+  for (const [name, data] of Object.entries(lifts)) {
+    const { toNext, nextLabel } = getLiftProgress(name, data.pr);
+    if (toNext > 0 && toNext < minDiff) {
+      minDiff = toNext;
+      nearest = { name, toNext, nextLabel };
+    }
+  }
+  return nearest;
+}
+
 export function getMuscleRank(muscle: string, lifts: Record<string, LiftData>): string {
   const liftNames = MUSCLES[muscle as keyof typeof MUSCLES] || [];
   const ranks = ['Bronze', 'Silver', 'Gold', 'Elite'];

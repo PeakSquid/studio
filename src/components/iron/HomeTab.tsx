@@ -1,13 +1,12 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import { IronState } from '@/types/iron';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Settings, Zap, Clock, Cloud } from 'lucide-react';
+import { Settings, Zap, Clock, Cloud, Target, ChevronRight } from 'lucide-react';
 import { MUSCLES } from '@/lib/constants';
-import { getOverallRank, getMuscleRank, getOverallRankProgress } from '@/lib/iron-utils';
+import { getOverallRank, getOverallRankProgress, getNearestMilestone } from '@/lib/iron-utils';
 import SettingsModal from './SettingsModal';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import { cn } from '@/lib/utils';
@@ -24,6 +23,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
   const [now, setNow] = useState(new Date());
   const rank = getOverallRank(state.lifts);
   const { nextRank, progress, remaining } = getOverallRankProgress(state.lifts);
+  const milestone = getNearestMilestone(state.lifts);
   const name = state.settings.name || 'Athlete';
   
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
   };
 
   const todaysWorkout = getTodaysWorkout(state);
-  const volumeData = state.volumeHistory.slice(-7).map((v, i) => ({ val: v.volume }));
+  const volumeData = state.volumeHistory.slice(-7).map((v) => ({ val: v.volume }));
 
   return (
     <div className="p-6 pt-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-40">
@@ -82,7 +82,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
                   lvl === 1 && "dot-half",
                   lvl === 2 && "dot-active"
                 )}
-                title={`Day ${i + 1}: ${lvl === 2 ? 'High Effort' : lvl === 1 ? 'Low Effort' : 'Rest'}`}
+                title={`Day ${i + 1}`}
               />
             ))}
           </div>
@@ -120,6 +120,22 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
           <span>{nextRank}</span>
         </div>
       </Card>
+
+      {/* Nearest Milestone */}
+      {milestone && (
+        <Card className="p-4 mb-6 bg-[#1C2500] border border-[#2E3D00] flex items-center justify-between group cursor-default">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
+              <Target className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-[9px] font-black uppercase tracking-widest text-accent/60">Next Objective</div>
+              <div className="text-xs font-bold text-accent">{milestone.name} <span className="text-muted-foreground">+{milestone.toNext}lb to {milestone.nextLabel}</span></div>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-accent/40 group-hover:text-accent transition-colors" />
+        </Card>
+      )}
 
       {/* Performance Briefing */}
       <div className="grid grid-cols-2 gap-4 mb-6">
@@ -171,15 +187,11 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
         <Card className="p-8 bg-secondary/30 border-border flex flex-col items-center">
           <div className="relative w-full max-w-[200px] mb-10">
             <svg viewBox="0 0 100 150" className="w-full h-auto">
-              {/* Chest */}
               <path d="M30 40 Q50 35 70 40 L65 55 Q50 60 35 55 Z" className={`muscle-map-path ${getRecoveryInfo('Chest').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
-              {/* Shoulders */}
               <circle cx="25" cy="45" r="8" className={`muscle-map-path ${getRecoveryInfo('Shoulders').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
               <circle cx="75" cy="45" r="8" className={`muscle-map-path ${getRecoveryInfo('Shoulders').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
-              {/* Arms */}
               <path d="M20 55 L15 90 L25 90 L28 55 Z" className={`muscle-map-path ${getRecoveryInfo('Arms').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
               <path d="M80 55 L85 90 L75 90 L72 55 Z" className={`muscle-map-path ${getRecoveryInfo('Arms').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
-              {/* Legs */}
               <path d="M35 95 L30 140 L45 140 L48 95 Z" className={`muscle-map-path ${getRecoveryInfo('Legs').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
               <path d="M65 95 L70 140 L55 140 L52 95 Z" className={`muscle-map-path ${getRecoveryInfo('Legs').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
             </svg>

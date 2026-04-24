@@ -4,11 +4,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { IronState } from '@/types/iron';
 import { aiCoachChat } from '@/ai/flows/ai-coach-chat';
 import { getTacticalVoice } from '@/ai/flows/ai-coach-voice-flow';
-import { analyzeEquipment } from '@/ai/flows/iron-vision-flow';
-import { Send, RefreshCcw, Loader2, Bot, Info, User, Volume2, Square, Camera, Eye } from 'lucide-react';
+import { analyzeIronVision } from '@/ai/flows/iron-vision-flow';
+import { Send, Loader2, Bot, User, Volume2, Square, Camera, Eye, Activity } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { getOverallRank } from '@/lib/iron-utils';
+import { cn } from '@/lib/utils';
 
 type CoachTabProps = {
   state: IronState;
@@ -26,6 +27,7 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isVoicing, setIsVoicing] = useState(false);
+  const [visionMode, setVisionMode] = useState<'equipment' | 'form'>('equipment');
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -67,24 +69,31 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
       const base64 = reader.result as string;
       setIsLoading(true);
       
+      const transmissionMsg = visionMode === 'equipment' ? '[Transmitting Equipment Telemetry...]' : '[Transmitting Biomechanical Form Telemetry...]';
+      
       updateState(prev => ({
         ...prev,
-        chatHistory: [...prev.chatHistory, { role: 'user', content: '[Transmitting Equipment Telemetry...]' }]
+        chatHistory: [...prev.chatHistory, { role: 'user', content: transmissionMsg }]
       }));
 
       try {
-        const result = await analyzeEquipment({ photoDataUri: base64 });
+        const result = await analyzeIronVision({ photoDataUri: base64, mode: visionMode });
+        
+        let reply = '';
+        if (result.equipment) {
+          reply = `**Equipment Identified:** ${result.equipment.equipmentName}\n\n**Tactical Advice:** ${result.equipment.tacticalAdvice}\n\n**Primary Targets:** ${result.equipment.targetMuscles.join(', ')}`;
+        } else if (result.form) {
+          reply = `**Form Score:** ${result.form.score}/100\n\n**Feedback:** ${result.form.feedback}\n\n${result.form.safetyWarnings.length > 0 ? `**Safety Alerts:** ${result.form.safetyWarnings.join(', ')}` : '**Safety Status:** No critical alerts.'}`;
+        }
+
         updateState(prev => ({
           ...prev,
-          chatHistory: [...prev.chatHistory, { 
-            role: 'assistant', 
-            content: `**Equipment Identified:** ${result.equipmentName}\n\n**Tactical Advice:** ${result.tacticalAdvice}\n\n**Primary Targets:** ${result.targetMuscles.join(', ')}` 
-          }]
+          chatHistory: [...prev.chatHistory, { role: 'assistant', content: reply || 'Analysis complete. Intel generated.' }]
         }));
       } catch (err) {
         updateState(prev => ({
           ...prev,
-          chatHistory: [...prev.chatHistory, { role: 'assistant', content: 'Vision downlink failed. Equipment unrecognized.' }]
+          chatHistory: [...prev.chatHistory, { role: 'assistant', content: 'Vision downlink failed. Telemetry unrecognized.' }]
         }));
       } finally {
         setIsLoading(false);
@@ -131,7 +140,7 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
         updateState(prev => ({
           ...prev,
           plan: result.plan!,
-          chatHistory: [...prev.chatHistory, { role: 'assistant', content: result.reply || 'Affirmative. Your training plan has been tacticaly generated. View it in the Plan tab.' }]
+          chatHistory: [...prev.chatHistory, { role: 'assistant', content: result.reply || 'Affirmative. Your training plan has been tactically generated. View it in the Plan tab.' }]
         }));
       } else {
         updateState(prev => ({
@@ -153,7 +162,7 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
     <div className="h-full flex flex-col bg-background animate-in fade-in duration-500">
       <header className="px-6 pt-12 pb-4 border-b border-border flex items-end justify-between bg-background sticky top-0 z-20">
         <div>
-          <p className="eyebrow">Iron Intelligence v3.0</p>
+          <p className="eyebrow">Iron Intelligence v3.1</p>
           <h1 className="hero-title">Iron <span className="text-accent">Coach</span></h1>
         </div>
         <div className="flex gap-2">
@@ -164,6 +173,20 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
             ref={fileInputRef} 
             onChange={handleVisionUpload}
           />
+          <div className="flex bg-secondary p-1 rounded-xl border border-border">
+            <button 
+              onClick={() => setVisionMode('equipment')}
+              className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-all", visionMode === 'equipment' ? "bg-accent text-accent-foreground" : "text-muted-foreground")}
+            >
+              <Eye className="w-3.5 h-3.5" />
+            </button>
+            <button 
+              onClick={() => setVisionMode('form')}
+              className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-all", visionMode === 'form' ? "bg-accent text-accent-foreground" : "text-muted-foreground")}
+            >
+              <Activity className="w-3.5 h-3.5" />
+            </button>
+          </div>
           <button 
             onClick={() => fileInputRef.current?.click()}
             className="w-10 h-10 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground transition-all active:scale-90 hover:text-accent"
@@ -173,7 +196,7 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
           {state.chatHistory.length > 0 && (
             <button 
               onClick={isVoicing ? stopVoice : handleVoiceBriefing} 
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-90 ${isVoicing ? 'bg-accent text-accent-foreground animate-pulse' : 'bg-secondary border border-border text-muted-foreground hover:text-accent'}`}
+              className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-90", isVoicing ? 'bg-accent text-accent-foreground animate-pulse' : 'bg-secondary border border-border text-muted-foreground hover:text-accent')}
             >
               {isVoicing ? <Square className="w-4 h-4 fill-current" /> : <Volume2 className="w-4 h-4" />}
             </button>
@@ -198,11 +221,8 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
             </div>
             <div>
               <h3 className="font-headline text-3xl leading-none mb-2">Tactical Command</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">I am your Elite Strength AI. Upload a photo of equipment for **IronVision** analysis or state your objective.</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">I am your Elite Strength AI. Use **IronVision** to scan equipment or analyze your lifting form for tactical corrections.</p>
             </div>
-            <Card className="p-4 bg-secondary/30 border-border text-[10px] text-muted-foreground uppercase font-black tracking-widest flex items-center gap-3">
-              <Eye className="w-4 h-4 text-accent" /> IronVision Enabled
-            </Card>
           </div>
         )}
 
@@ -260,9 +280,7 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
           <button 
             disabled={!input.trim() || isLoading}
             onClick={() => handleSend()}
-            className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
-              input.trim() && !isLoading ? 'bg-accent text-accent-foreground shadow-[0_0_20px_rgba(232,255,58,0.3)] scale-100' : 'bg-secondary text-muted-foreground scale-95 opacity-50'
-            }`}
+            className={cn("w-14 h-14 rounded-2xl flex items-center justify-center transition-all", input.trim() && !isLoading ? 'bg-accent text-accent-foreground shadow-[0_0_20px_rgba(232,255,58,0.3)]' : 'bg-secondary text-muted-foreground opacity-50')}
           >
             <Send className="w-6 h-6" />
           </button>

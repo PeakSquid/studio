@@ -5,7 +5,7 @@ import { IronState } from '@/types/iron';
 import { THRESHOLDS } from '@/lib/constants';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, CartesianGrid, Tooltip } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, CartesianGrid, Tooltip, LineChart, Line } from 'recharts';
 import { getLiftRank, getLiftProgress, getOverallRank } from '@/lib/iron-utils';
 import { generateSpiritTotem } from '@/ai/flows/generate-totem-flow';
 import { Loader2, Sparkles, Image as ImageIcon } from 'lucide-react';
@@ -149,21 +149,33 @@ export default function LiftsTab({ state }: LiftsTabProps) {
             const thresholds = THRESHOLDS[name as keyof typeof THRESHOLDS];
             const rank = getLiftRank(name, data.pr);
             const { pct, nextLabel, toNext } = getLiftProgress(name, data.pr);
+            const sparklineData = (data.history || []).map(h => ({ val: h.weight }));
             
             return (
               <Card key={name} className="p-5 bg-secondary/40 border-border hover:border-accent/30 transition-all group overflow-hidden relative">
                 <div className="absolute right-0 top-0 w-24 h-full bg-gradient-to-l from-accent/5 to-transparent pointer-events-none" />
                 
                 <div className="flex justify-between items-start mb-4">
-                  <div>
+                  <div className="flex-1">
                     <div className="text-[11px] font-black text-muted-foreground uppercase tracking-widest mb-1">{name}</div>
                     <div className="font-headline text-4xl leading-none group-hover:text-accent transition-colors">
                       {data.pr || '—'} <span className="text-sm font-sans text-muted-foreground font-medium uppercase">{data.pr > 0 ? 'lb' : ''}</span>
                     </div>
                   </div>
-                  <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest rank-${rank.toLowerCase()}`}>
-                    {rank}
-                  </span>
+                  <div className="text-right">
+                    <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest rank-${rank.toLowerCase()}`}>
+                      {rank}
+                    </span>
+                    {sparklineData.length > 1 && (
+                      <div className="h-6 w-16 mt-2 ml-auto opacity-50">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={sparklineData}>
+                            <Line type="monotone" dataKey="val" stroke="currentColor" strokeWidth={2} dot={false} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 {thresholds && (
