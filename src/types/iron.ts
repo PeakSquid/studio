@@ -21,6 +21,7 @@ export type WorkoutPlan = {
 };
 
 export type IronState = {
+  id: string;
   lifts: Record<string, LiftData>;
   streak: number;
   lastWorkout: string | null;

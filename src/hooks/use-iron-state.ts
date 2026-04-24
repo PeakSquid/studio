@@ -4,10 +4,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { IronState } from '@/types/iron';
 import { useFirestore, useUser, useDoc } from '@/firebase';
-import { doc, setDoc } from 'firebase/firestore';
-import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc } from 'firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const DEFAULT_STATE: IronState = {
+  id: '',
   lifts: {
     'Bench Press': { pr: 0, reps: 0, history: [] },
     'Squat': { pr: 0, reps: 0, history: [] },
@@ -67,14 +68,21 @@ export function useIronState() {
   // Sync updates to remote (non-blocking) and local
   const updateState = (updater: (prev: IronState) => IronState) => {
     setState((prev) => {
-      const next = updater(prev);
+      let next = updater(prev);
+      
+      // Ensure ID is set for Firestore synchronization and rule compliance
+      if (user && next.id !== user.uid) {
+        next = { ...next, id: user.uid };
+      }
       
       // Save local for offline
       localStorage.setItem('ironrank_state_v7', JSON.stringify(next));
       
       // Sync to Firestore if logged in
       if (userDocRef) {
-        updateDocumentNonBlocking(userDocRef, next);
+        // Use setDocumentNonBlocking to allow initial creation (method: create) 
+        // and ensure fields like 'id' are included in the merge.
+        setDocumentNonBlocking(userDocRef, next, { merge: true });
       }
       
       return next;
