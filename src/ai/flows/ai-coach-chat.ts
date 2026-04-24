@@ -241,7 +241,7 @@ const aiCoachChatFlow = ai.defineFlow(
         chatHistory: chatHistory,
       },
       // Ensure the model is capable of tool calling
-      model: 'gemini-1.5-flash-latest',
+      model: 'googleai/gemini-2.5-flash',
     });
 
     if (modelResponse.toolCalls && modelResponse.toolCalls.length > 0) {
@@ -265,7 +265,7 @@ const aiCoachChatFlow = ai.defineFlow(
     }
 
     // If no tool call, or if it's a conversational response
-    return { reply: modelResponse.text() };
+    return { reply: modelResponse.text };
   }
 );
 
