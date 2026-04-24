@@ -4,9 +4,9 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { IronState } from '@/types/iron';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Settings, Zap, Clock, Cloud, Volume2, Square, Brain, Terminal, Shield, Activity } from 'lucide-react';
+import { Settings, Zap, Clock, Cloud, Volume2, Square, Brain, Terminal, Shield, Activity, Target } from 'lucide-react';
 import { MUSCLES } from '@/lib/constants';
-import { getOverallRank, getOverallRankProgress, getNearestMilestone, getCNSFatigue, getAthleteLevel } from '@/lib/iron-utils';
+import { getOverallRank, getOverallRankProgress, getNearestMilestone, getCNSFatigue, getAthleteLevel, getDailyObjective } from '@/lib/iron-utils';
 import { getTacticalVoice } from '@/ai/flows/ai-coach-voice-flow';
 import { getDailyTacticalTip } from '@/ai/flows/tactical-tip-flow';
 import SettingsModal from './SettingsModal';
@@ -32,6 +32,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
   const milestone = useMemo(() => getNearestMilestone(state.lifts), [state.lifts]);
   const cnsLoad = useMemo(() => getCNSFatigue(state.streak, state.activity), [state.streak, state.activity]);
   const athleteLevelData = useMemo(() => getAthleteLevel(state.xp || 0), [state.xp]);
+  const objective = useMemo(() => getDailyObjective(state), [state]);
 
   const name = state.settings.name || 'Athlete';
   const { nextRank, progress: rankProgress, remaining } = rankProgressData;
@@ -63,7 +64,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
 
     setIsBriefing(true);
     try {
-      const text = `Athlete ${name}, standing by for briefing. Current rank: ${rank}. Neural load is at ${cnsLoad} percent. You have completed ${state.workoutsCompleted} sessions. ${milestone ? `Primary tactical target: ${milestone.name}. You are ${milestone.toNext} pounds away from ${milestone.nextLabel} rank.` : 'All primary objectives secured.'} Initializing workout protocol. Good luck.`;
+      const text = `Athlete ${name}, standing by for briefing. Current rank: ${rank}. Neural load is at ${cnsLoad} percent. Your primary objective for this cycle is to ${objective.label}. Initializing workout protocol. Good luck.`;
       const result = await getTacticalVoice({ text });
       setAudioUrl(result.media);
       setTimeout(() => {
@@ -129,9 +130,22 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
         />
       )}
 
+      <Card className="p-5 mb-6 glass-card border-accent/20 relative overflow-hidden group">
+        <div className="scanline" />
+        <div className="flex justify-between items-end mb-4">
+          <div>
+            <div className="hud-label mb-1">Current Objective</div>
+            <div className="font-headline text-3xl leading-none tracking-tighter italic text-accent">{objective.label}</div>
+          </div>
+          <div className="bg-accent/10 px-3 py-1 rounded-lg border border-accent/20">
+            <span className="text-[9px] font-black uppercase text-accent tracking-widest">{objective.type}</span>
+          </div>
+        </div>
+        <Progress value={Math.min((state.totalVolume / objective.targetVolume) * 100, 100)} className="h-1.5 bg-background/50" />
+      </Card>
+
       <div className="grid grid-cols-1 gap-4 mb-6">
-        <Card className="p-5 glass-card border-accent/20 relative overflow-hidden group">
-          <div className="scanline" />
+        <Card className="p-5 glass-card relative overflow-hidden group">
           <div className="flex justify-between items-end mb-4">
             <div>
               <div className="hud-label mb-1">Neural Capacity</div>
@@ -146,6 +160,23 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
           <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-muted-foreground/30">
             <span>SYNC NODE {level}</span>
             <span>NEXT CALIBRATION</span>
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <Card className="p-5 glass-card group">
+          <p className="eyebrow flex items-center gap-2 group-hover:text-accent transition-colors"><Zap className="w-3.5 h-3.5" /> Streak</p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="font-headline text-4xl italic">{state.streak}</span>
+            <span className="hud-label">Days</span>
+          </div>
+        </Card>
+        <Card className="p-5 glass-card group">
+          <p className="eyebrow flex items-center gap-2 group-hover:text-accent transition-colors"><Brain className="w-3.5 h-3.5" /> CNS Load</p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="font-headline text-4xl italic">{cnsLoad}</span>
+            <span className="hud-label">%</span>
           </div>
         </Card>
       </div>
@@ -168,42 +199,6 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
         </section>
       )}
 
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <Card className="p-5 glass-card group">
-          <p className="eyebrow flex items-center gap-2 group-hover:text-accent transition-colors"><Zap className="w-3.5 h-3.5" /> Streak</p>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="font-headline text-4xl italic">{state.streak}</span>
-            <span className="hud-label">Days</span>
-          </div>
-        </Card>
-        <Card className="p-5 glass-card group">
-          <p className="eyebrow flex items-center gap-2 group-hover:text-accent transition-colors"><Brain className="w-3.5 h-3.5" /> CNS Load</p>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="font-headline text-4xl italic">{cnsLoad}</span>
-            <span className="hud-label">%</span>
-          </div>
-        </Card>
-      </div>
-
-      <Card className="p-5 mb-8 glass-card border-white/5 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-1 h-full bg-accent/20" />
-        <div className="flex justify-between items-end mb-4">
-          <div>
-            <div className="hud-label mb-1">Rank Projection</div>
-            <div className="font-headline text-4xl leading-none italic">Target <span className="text-accent">{nextRank}</span></div>
-          </div>
-          <div className="text-right">
-             <div className="hud-label mb-1">Status</div>
-            <div className="text-xs font-bold text-accent">{remaining} Objectives</div>
-          </div>
-        </div>
-        <Progress value={rankProgress} className="h-2 bg-background/50 mb-2" />
-        <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-muted-foreground/40">
-          <span>{rank} Tier</span>
-          <span>{rankProgress}% Manifested</span>
-        </div>
-      </Card>
-
       <section>
         <h3 className="section-header">Biological Status</h3>
         <Card className="p-8 glass-card flex flex-col items-center relative overflow-hidden">
@@ -219,6 +214,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
               <path d="M35 95 L30 140 L45 140 L48 95 Z" className={`muscle-map-path ${getRecoveryInfo('Legs').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
               <path d="M65 95 L70 140 L55 140 L52 95 Z" className={`muscle-map-path ${getRecoveryInfo('Legs').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
             </svg>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] border border-accent/5 rounded-full animate-pulse-soft pointer-events-none" />
           </div>
           <div className="grid grid-cols-1 gap-3 w-full relative z-10">
             {Object.keys(MUSCLES).map(m => {
@@ -252,3 +248,4 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
     </div>
   );
 }
+

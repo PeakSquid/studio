@@ -1,10 +1,9 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
 import { IronState, WorkoutLogEntry } from '@/types/iron';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { X, Check, ChevronLeft, ChevronRight, Zap, Calculator, Volume2, Square, Loader2 } from 'lucide-react';
+import { X, Check, ChevronLeft, ChevronRight, Zap, Calculator, Volume2, Square, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { calculatePlates } from '@/lib/iron-utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -27,6 +26,7 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
   const [totalRest, setTotalRest] = useState(90);
   const [isDebriefing, setIsDebriefing] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [pingSet, setPingSet] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -60,9 +60,12 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
   const toggleSet = (idx: number) => {
     const newSets = [...sets];
     const set = newSets[activeExIdx][idx];
-    set.done = !set.done;
+    const isNowDone = !set.done;
+    set.done = isNowDone;
     
-    if (set.done) {
+    if (isNowDone) {
+      setPingSet(idx);
+      setTimeout(() => setPingSet(null), 800);
       const rTime = isCompound(currentEx.name) ? 120 : 60;
       setRestTime(rTime);
       setTotalRest(rTime);
@@ -274,10 +277,13 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
               <Card 
                 key={si} 
                 className={cn(
-                  "p-3 flex items-center gap-4 border transition-all",
+                  "p-3 flex items-center gap-4 border transition-all relative overflow-hidden",
                   set.done ? "bg-accent/10 border-accent/30" : "bg-secondary border-border"
                 )}
               >
+                {pingSet === si && (
+                  <div className="absolute inset-0 bg-accent/20 animate-xp-ping pointer-events-none" />
+                )}
                 <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs", set.done ? "bg-accent text-accent-foreground" : "bg-background text-muted-foreground")}>
                   {si + 1}
                 </div>
@@ -295,10 +301,10 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
                   onClick={() => toggleSet(si)}
                   className={cn(
                     "w-12 h-12 rounded-xl flex items-center justify-center transition-all",
-                    set.done ? "bg-accent text-accent-foreground" : "bg-background border-2 border-border"
+                    set.done ? "bg-accent text-accent-foreground shadow-[0_0_15px_rgba(var(--accent),0.2)]" : "bg-background border-2 border-border"
                   )}
                 >
-                  <Check className={cn("w-6 h-6 stroke-[3]", !set.done && "opacity-0")} />
+                  {set.done ? <Sparkles className="w-6 h-6 animate-pulse" /> : <Check className="w-6 h-6 opacity-0" />}
                 </button>
               </Card>
             ))}

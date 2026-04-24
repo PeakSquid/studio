@@ -1,4 +1,3 @@
-
 import { THRESHOLDS, MUSCLES } from './constants';
 import { IronState, LiftData } from '@/types/iron';
 
@@ -127,4 +126,20 @@ export function getAthleteLevel(xp: number) {
   const progress = Math.round(((xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100);
   
   return { level, progress, nextLevelXp };
+}
+
+/**
+ * Generates a daily objective based on rank and history.
+ */
+export function getDailyObjective(state: IronState) {
+  const rank = getOverallRank(state.lifts);
+  const baseVolume = rank === 'Elite' ? 8000 : rank === 'Gold' ? 6000 : rank === 'Silver' ? 4000 : 2500;
+  const multiplier = 1 + (state.streak * 0.05);
+  const targetVolume = Math.round(baseVolume * multiplier);
+  
+  return {
+    targetVolume,
+    label: `Move ${targetVolume.toLocaleString()}lb Iron`,
+    type: 'Volume Mission'
+  };
 }
