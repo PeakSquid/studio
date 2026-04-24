@@ -85,6 +85,9 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
       type: workout.type
     };
 
+    // XP calculation: 25 XP base per workout + 5 XP per set
+    const xpEarned = 25 + (doneSetsCount * 5);
+
     updateState(prev => {
       const newActivity = [...prev.activity];
       newActivity.shift();
@@ -111,7 +114,8 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
         lastWorkout: today,
         totalVolume: sessionVolume,
         volumeHistory: newVolumeHistory,
-        muscleRecovery: newRecovery
+        muscleRecovery: newRecovery,
+        xp: (prev.xp || 0) + xpEarned
       };
     });
     
@@ -120,7 +124,7 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
     // Trigger AI Debriefing
     setIsDebriefing(true);
     try {
-      const briefText = `Mission accomplished, athlete. ${workout.name} completed. Total tonnage moved: ${sessionVolume} pounds across ${doneSetsCount} successful sets. Your central nervous system has been pushed; localized muscle fatigue is expected. 48 hour recovery window initiated. Data logged to iron cloud. Well done.`;
+      const briefText = `Mission accomplished, athlete. ${workout.name} completed. Total tonnage moved: ${sessionVolume} pounds across ${doneSetsCount} successful sets. Neural adaptation gain: ${xpEarned} XP. Data logged to iron cloud. Well done.`;
       const result = await getTacticalVoice({ text: briefText });
       setAudioUrl(result.media);
       setTimeout(() => {

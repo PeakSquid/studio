@@ -65,20 +65,6 @@ export function getNearestMilestone(lifts: Record<string, LiftData>) {
   return nearest;
 }
 
-export function getMuscleRank(muscle: string, lifts: Record<string, LiftData>): string {
-  const liftNames = MUSCLES[muscle as keyof typeof MUSCLES] || [];
-  const ranks = ['Bronze', 'Silver', 'Gold', 'Elite'];
-  
-  let minIdx = 3;
-  for (const l of liftNames) {
-    const weight = lifts[l]?.pr || 0;
-    const r = getLiftRank(l, weight);
-    const idx = ranks.indexOf(r);
-    if (idx < minIdx) minIdx = idx;
-  }
-  return ranks[minIdx];
-}
-
 export function getLiftProgress(lift: string, weight: number) {
   const tiers = THRESHOLDS[lift as keyof typeof THRESHOLDS] || [];
   if (tiers.length === 0) return { pct: 0, nextLabel: '', toNext: 0 };
@@ -128,4 +114,17 @@ export function getCNSFatigue(streak: number, activity: number[]) {
   const recentWorkouts = activity.slice(-7).filter(a => a === 2).length;
   let load = recentWorkouts * 15 + streak * 5;
   return Math.min(load, 100);
+}
+
+/**
+ * Calculates athlete level based on total XP.
+ * Formula: Level = floor(sqrt(XP / 100))
+ */
+export function getAthleteLevel(xp: number) {
+  const level = Math.floor(Math.sqrt(xp / 100)) + 1;
+  const currentLevelXp = Math.pow(level - 1, 2) * 100;
+  const nextLevelXp = Math.pow(level, 2) * 100;
+  const progress = Math.round(((xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100);
+  
+  return { level, progress, nextLevelXp };
 }

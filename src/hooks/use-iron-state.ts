@@ -31,10 +31,12 @@ const DEFAULT_STATE: IronState = {
   volumeHistory: [],
   onboardingComplete: false,
   weekStart: null,
+  xp: 0,
+  level: 1,
 };
 
 // Key versioning ensures a clean reset for the user if necessary
-const STORAGE_KEY = 'ironrank_state_v9';
+const STORAGE_KEY = 'ironrank_state_v10';
 
 export function useIronState() {
   const { user, isUserLoading } = useUser();

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -26,6 +27,9 @@ export default function PRLogModal({ isOpen, onClose, state, updateState }: PRLo
     const w = parseInt(weight);
     const r = parseInt(reps);
     if (isNaN(w) || w <= 0) return;
+
+    // Award 50 XP for a PR record
+    const xpEarned = 50;
 
     updateState(prev => {
       const currentLift = prev.lifts[selectedLift];
@@ -57,7 +61,8 @@ export default function PRLogModal({ isOpen, onClose, state, updateState }: PRLo
             history: newHistory
           }
         },
-        unlockedAchievements: newUnlocked
+        unlockedAchievements: newUnlocked,
+        xp: (prev.xp || 0) + xpEarned
       };
     });
 

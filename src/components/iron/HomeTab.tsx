@@ -5,12 +5,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { IronState } from '@/types/iron';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Settings, Zap, Clock, Cloud, Target, ChevronRight, Volume2, Loader2, Square, Brain } from 'lucide-react';
+import { Settings, Zap, Clock, Cloud, Target, ChevronRight, Volume2, Loader2, Square, Brain, Terminal } from 'lucide-react';
 import { MUSCLES } from '@/lib/constants';
-import { getOverallRank, getOverallRankProgress, getNearestMilestone, getCNSFatigue } from '@/lib/iron-utils';
+import { getOverallRank, getOverallRankProgress, getNearestMilestone, getCNSFatigue, getAthleteLevel } from '@/lib/iron-utils';
 import { getTacticalVoice } from '@/ai/flows/ai-coach-voice-flow';
+import { getDailyTacticalTip } from '@/ai/flows/tactical-tip-flow';
 import SettingsModal from './SettingsModal';
-import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import { cn } from '@/lib/utils';
 
 type HomeTabProps = {
@@ -25,16 +25,27 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
   const [isBriefing, setIsBriefing] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
+  const [dailyTip, setDailyTip] = useState<{title: string, content: string, category: string} | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   
   const rank = getOverallRank(state.lifts);
-  const { nextRank, progress, remaining } = getOverallRankProgress(state.lifts);
+  const { nextRank, progress: rankProgress, remaining } = getOverallRankProgress(state.lifts);
   const milestone = getNearestMilestone(state.lifts);
   const name = state.settings.name || 'Athlete';
   const cnsLoad = getCNSFatigue(state.streak, state.activity);
+  const { level, progress: levelProgress } = getAthleteLevel(state.xp || 0);
   
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
+    const fetchTip = async () => {
+      try {
+        const tip = await getDailyTacticalTip();
+        setDailyTip(tip);
+      } catch (e) {
+        console.warn('Failed to fetch tactical intel.');
+      }
+    };
+    fetchTip();
     return () => clearInterval(timer);
   }, []);
 
@@ -76,8 +87,6 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
     
     return { status: 'Fatigued', time: `READY IN ${diffHours}H` };
   };
-
-  const volumeData = state.volumeHistory.slice(-7).map((v) => ({ val: v.volume }));
 
   return (
     <div className="p-6 pt-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-40">
@@ -121,33 +130,43 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
         />
       )}
 
-      {/* Consistency Matrix */}
-      <section className="mb-6">
-        <h3 className="section-header">Consistency Grid</h3>
-        <Card className="p-4 bg-secondary/20 border-border">
-          <div className="dot-grid">
-            {state.activity.map((lvl, i) => (
-              <div 
-                key={i} 
-                className={cn(
-                  "dot",
-                  lvl === 1 && "dot-half",
-                  lvl === 2 && "dot-active"
-                )}
-              />
-            ))}
+      {/* Level & XP HUD */}
+      <Card className="p-4 mb-6 bg-[#121212] border-accent/20 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+          <Terminal className="w-12 h-12 text-accent" />
+        </div>
+        <div className="flex justify-between items-end mb-3">
+          <div>
+            <div className="text-[10px] text-accent font-black uppercase tracking-widest mb-0.5">Neural Capacity</div>
+            <div className="font-headline text-3xl leading-none">Level <span className="text-accent">{level}</span></div>
           </div>
-          <div className="mt-3 flex justify-between items-center">
-            <div className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Athlete Telemetry (21D)</div>
-            <div className="flex gap-2 items-center">
-              <div className="flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-[1px] bg-accent" />
-                <span className="text-[8px] font-bold text-muted-foreground uppercase">Active</span>
-              </div>
+          <div className="text-right text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            {state.xp || 0} Total XP
+          </div>
+        </div>
+        <Progress value={levelProgress} className="h-1.5 bg-background mb-1" />
+        <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-muted-foreground/50">
+          <span>Lvl {level}</span>
+          <span>Next Node</span>
+        </div>
+      </Card>
+
+      {/* Daily Tactical Intel */}
+      {dailyTip && (
+        <section className="mb-6">
+          <h3 className="section-header">Command Intel</h3>
+          <Card className="p-4 bg-accent/5 border-accent/10 border-l-4 border-l-accent animate-in fade-in duration-1000">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="bg-accent text-accent-foreground text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">
+                {dailyTip.category}
+              </span>
+              <div className="h-px flex-1 bg-accent/10" />
             </div>
-          </div>
-        </Card>
-      </section>
+            <h4 className="font-bold text-sm mb-1">{dailyTip.title}</h4>
+            <p className="text-xs text-muted-foreground leading-relaxed italic">"{dailyTip.content}"</p>
+          </Card>
+        </section>
+      )}
 
       {/* Vitals Grid */}
       <div className="grid grid-cols-2 gap-4 mb-6">
@@ -179,7 +198,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
             <div className="text-xs font-bold">{remaining} Objectives Remaining</div>
           </div>
         </div>
-        <Progress value={progress} className="h-2 bg-background mb-2" />
+        <Progress value={rankProgress} className="h-2 bg-background mb-2" />
         <div className="flex justify-between text-[9px] font-black uppercase tracking-tighter text-muted-foreground">
           <span>{rank}</span>
           <span>{nextRank}</span>

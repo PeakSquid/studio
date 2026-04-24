@@ -52,4 +52,6 @@ export type IronState = {
   volumeHistory: { date: string; volume: number }[];
   onboardingComplete: boolean;
   weekStart: string | null;
+  xp: number; // Athlete total experience points
+  level: number; // Athlete neural level
 };
