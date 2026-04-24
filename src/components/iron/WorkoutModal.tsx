@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -69,17 +70,29 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
   };
 
   const handleFinish = () => {
+    const sessionVolume = sets.flat().reduce((acc, s) => acc + (s.done ? (s.weight * s.reps) : 0), 0);
+    const affectedMuscles = getAffectedMuscles(workout.focus);
+    
     updateState(prev => {
       const newActivity = [...prev.activity];
       newActivity.shift();
       newActivity.push(2);
+      
+      const newRecovery = { ...prev.muscleRecovery };
+      affectedMuscles.forEach(m => {
+        const recoveryDate = new Date();
+        recoveryDate.setHours(recoveryDate.getHours() + 48); // Standard 48h recovery
+        newRecovery[m] = recoveryDate.toISOString();
+      });
       
       return {
         ...prev,
         workoutsCompleted: prev.workoutsCompleted + 1,
         streak: prev.streak + 1,
         activity: newActivity,
-        lastWorkout: new Date().toISOString()
+        lastWorkout: new Date().toISOString(),
+        totalVolume: sessionVolume,
+        muscleRecovery: newRecovery
       };
     });
     
@@ -89,6 +102,11 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
   const isCompound = (name: string) => {
     const compounds = ['bench press', 'squat', 'deadlift', 'overhead press', 'barbell row'];
     return compounds.some(c => name.toLowerCase().includes(c));
+  };
+
+  const getAffectedMuscles = (focus: string) => {
+    const muscles = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms'];
+    return muscles.filter(m => focus.toLowerCase().includes(m.toLowerCase()));
   };
 
   if (phase === 'done') {
@@ -105,8 +123,8 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
                 <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">Sets Executed</div>
               </div>
               <div className="bg-secondary p-4 rounded-2xl border border-border">
-                <div className="font-headline text-3xl leading-none">{workout.exercises.length}</div>
-                <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">Exercises</div>
+                <div className="font-headline text-3xl leading-none">{state.totalVolume}</div>
+                <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">Total Tonnage</div>
               </div>
             </div>
 

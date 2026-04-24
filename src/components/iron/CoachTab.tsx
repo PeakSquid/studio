@@ -1,9 +1,11 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
 import { IronState } from '@/types/iron';
 import { aiCoachChat } from '@/ai/flows/ai-coach-chat';
-import { Send, RefreshCcw, Loader2, Bot, Info, User } from 'lucide-react';
+import { getTacticalVoice } from '@/ai/flows/ai-coach-voice-flow';
+import { Send, RefreshCcw, Loader2, Bot, Info, User, Volume2, Square } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { getOverallRank } from '@/lib/iron-utils';
@@ -15,21 +17,54 @@ type CoachTabProps = {
 
 const QUICK_PROMPTS = [
   'Generate 12-week program',
+  'Tactical Performance Review',
   'How do I reach next rank?',
-  'Deadlift tactical review',
-  'Analyze my capacity',
+  'Analyze muscle recovery',
 ];
 
 export default function CoachTab({ state, updateState }: CoachTabProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isVoicing, setIsVoicing] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [state.chatHistory, isLoading]);
+
+  const handleVoiceBriefing = async () => {
+    if (state.chatHistory.length === 0 || isVoicing) return;
+    
+    const lastAssistantMsg = [...state.chatHistory].reverse().find(m => m.role === 'assistant');
+    if (!lastAssistantMsg) return;
+
+    setIsVoicing(true);
+    try {
+      const result = await getTacticalVoice({ text: lastAssistantMsg.content });
+      setAudioUrl(result.media);
+      // Wait a tick for audio element to be available
+      setTimeout(() => {
+        if (audioRef.current) {
+          audioRef.current.play();
+        }
+      }, 100);
+    } catch (e) {
+      console.error(e);
+      setIsVoicing(false);
+    }
+  };
+
+  const stopVoice = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setIsVoicing(false);
+  };
 
   const handleSend = async (msg?: string) => {
     const text = msg || input;
@@ -89,13 +124,33 @@ export default function CoachTab({ state, updateState }: CoachTabProps) {
     <div className="h-full flex flex-col bg-background animate-in fade-in duration-500">
       <header className="px-6 pt-12 pb-4 border-b border-border flex items-end justify-between bg-background sticky top-0 z-20">
         <div>
-          <p className="eyebrow">Iron Intelligence v2.5</p>
+          <p className="eyebrow">Iron Intelligence v2.8</p>
           <h1 className="hero-title">Iron <span className="text-accent">Coach</span></h1>
         </div>
-        <button onClick={clearChat} className="w-10 h-10 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground active:scale-90 transition-all hover:text-accent">
-          <RefreshCcw className="w-4 h-4" />
-        </button>
+        <div className="flex gap-2">
+          {state.chatHistory.length > 0 && (
+            <button 
+              onClick={isVoicing ? stopVoice : handleVoiceBriefing} 
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-90 ${isVoicing ? 'bg-accent text-accent-foreground animate-pulse' : 'bg-secondary border border-border text-muted-foreground hover:text-accent'}`}
+            >
+              {isVoicing ? <Square className="w-4 h-4 fill-current" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+          )}
+          <button onClick={clearChat} className="w-10 h-10 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground active:scale-90 transition-all hover:text-accent">
+            <RefreshCcw className="w-4 h-4" />
+          </button>
+        </div>
       </header>
+
+      {audioUrl && (
+        <audio 
+          ref={audioRef} 
+          src={audioUrl} 
+          className="hidden" 
+          onEnded={() => setIsVoicing(false)} 
+          onError={() => setIsVoicing(false)}
+        />
+      )}
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-6 no-scrollbar pb-40">
         {state.chatHistory.length === 0 && (

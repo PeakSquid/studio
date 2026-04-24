@@ -1,3 +1,4 @@
+
 export type LiftData = {
   pr: number;
   reps: number;
@@ -34,6 +35,7 @@ export type IronState = {
     bodyweight: number;
     theme: 'iron' | 'stealth';
   };
-  weeklyMuscles: Record<string, number>;
+  muscleRecovery: Record<string, string>; // muscle -> ISO timestamp of expected full recovery
+  totalVolume: number; // total pounds moved in last workout
   weekStart: string | null;
 };

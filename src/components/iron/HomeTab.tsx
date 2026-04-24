@@ -1,10 +1,11 @@
+
 "use client";
 
 import React, { useState } from 'react';
 import { IronState } from '@/types/iron';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Settings, Zap, Target, TrendingUp, ChevronRight } from 'lucide-react';
+import { Settings, Zap, Target, TrendingUp, ChevronRight, Activity } from 'lucide-react';
 import { MUSCLES, MUSCLE_ICONS } from '@/lib/constants';
 import { getOverallRank, getMuscleRank, getOverallRankProgress } from '@/lib/iron-utils';
 import SettingsModal from './SettingsModal';
@@ -22,6 +23,15 @@ export default function HomeTab({ state, onStartWorkout, updateState }: HomeTabP
   const name = state.settings.name || 'Athlete';
   
   const todaysWorkout = getTodaysWorkout(state);
+
+  const getRecoveryStatus = (muscle: string) => {
+    const recoveryTime = state.muscleRecovery[muscle];
+    if (!recoveryTime) return 'Optimal';
+    const now = new Date();
+    const target = new Date(recoveryTime);
+    if (now >= target) return 'Optimal';
+    return 'Recovering';
+  };
 
   return (
     <div className="p-6 pt-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-32">
@@ -128,25 +138,31 @@ export default function HomeTab({ state, onStartWorkout, updateState }: HomeTabP
 
       {/* Muscles Section */}
       <section>
-        <h3 className="section-header">Targeted Groups</h3>
+        <h3 className="section-header">Biological Status</h3>
         <div className="grid grid-cols-1 gap-3">
           {Object.keys(MUSCLES).map((muscle) => {
             const mRank = getMuscleRank(muscle, state.lifts);
-            const liftNames = MUSCLES[muscle as keyof typeof MUSCLES];
-            const liftStr = liftNames.map(l => `${state.lifts[l]?.pr || 0}lb ${l.split(' ')[0]}`).join(', ');
+            const status = getRecoveryStatus(muscle);
+            const isRecovering = status === 'Recovering';
             
             return (
               <div key={muscle} className="p-4 bg-secondary/40 border border-border rounded-2xl flex items-center gap-4 group hover:bg-secondary/60 transition-all">
-                <div className="w-12 h-12 rounded-xl bg-background border border-border flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                <div className="w-12 h-12 rounded-xl bg-background border border-border flex items-center justify-center text-2xl group-hover:scale-110 transition-transform relative">
                   {MUSCLE_ICONS[muscle as keyof typeof MUSCLE_ICONS]}
+                  {isRecovering && (
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full animate-pulse border-2 border-background" />
+                  )}
                 </div>
                 <div className="flex-1">
-                  <div className="font-bold text-sm tracking-tight">{muscle}</div>
-                  <div className="text-[11px] text-muted-foreground font-medium">{liftStr}</div>
+                  <div className="font-bold text-sm tracking-tight flex items-center gap-2">
+                    {muscle}
+                    <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${isRecovering ? 'bg-orange-500/10 text-orange-500' : 'bg-green-500/10 text-green-500'}`}>
+                      {status}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground font-medium">Rank {mRank} Standards</div>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider rank-${mRank.toLowerCase()}`}>
-                  {mRank}
-                </span>
+                <Activity className={`w-4 h-4 ${isRecovering ? 'text-orange-500/40' : 'text-green-500/40'}`} />
               </div>
             );
           })}

@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { IronState } from '@/types/iron';
 
-const STORAGE_KEY = 'ironrank_state_v2';
+const STORAGE_KEY = 'ironrank_state_v3';
 
 const DEFAULT_STATE: IronState = {
   lifts: {
@@ -14,13 +15,14 @@ const DEFAULT_STATE: IronState = {
   },
   streak: 3,
   lastWorkout: null,
-  activity: [0,0,0,1,2,0,2,2,0,1,2,2,0,0,0,1,2,2,0,2,2], // Mock data for visual appeal
+  activity: [0,0,0,1,2,0,2,2,0,1,2,2,0,0,0,1,2,2,0,2,2],
   chatHistory: [],
   workoutsCompleted: 12,
   plan: null,
   unlockedAchievements: { 'first_workout': new Date().toISOString() },
   settings: { unit: 'lb', name: '', bodyweight: 185, theme: 'iron' },
-  weeklyMuscles: {},
+  muscleRecovery: {},
+  totalVolume: 0,
   weekStart: null,
 };
 
