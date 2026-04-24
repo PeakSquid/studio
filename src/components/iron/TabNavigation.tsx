@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -17,7 +18,11 @@ const TABS = [
   { id: 'plan', icon: Calendar, label: 'Plan' },
 ];
 
-export default function TabNavigation({ activeTab, setActiveTab }: TabNavProps) {
+/**
+ * TabNavigation optimized with React.memo to prevent unnecessary re-renders
+ * unless the activeTab changes.
+ */
+const TabNavigation = React.memo(({ activeTab, setActiveTab }: TabNavProps) => {
   return (
     <nav className="fixed bottom-0 left-0 right-0 h-[80px] bg-secondary/80 backdrop-blur-md border-t border-border flex items-start px-2 pb-[env(safe-area-inset-bottom,0px)] z-[100] max-w-md mx-auto">
       {TABS.map((tab) => (
@@ -25,14 +30,18 @@ export default function TabNavigation({ activeTab, setActiveTab }: TabNavProps) 
           key={tab.id}
           onClick={() => setActiveTab(tab.id)}
           className={cn(
-            "flex-1 flex flex-col items-center justify-center pt-3 gap-1 transition-colors",
+            "flex-1 flex flex-col items-center justify-center pt-3 gap-1 transition-colors outline-none",
             activeTab === tab.id ? "text-accent" : "text-muted-foreground"
           )}
         >
-          <tab.icon className="w-6 h-6" />
+          <tab.icon className={cn("w-6 h-6 transition-transform", activeTab === tab.id && "scale-110")} />
           <span className="text-[10px] font-bold uppercase tracking-wider">{tab.label}</span>
         </button>
       ))}
     </nav>
   );
-}
+});
+
+TabNavigation.displayName = 'TabNavigation';
+
+export default TabNavigation;

@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { IronState } from '@/types/iron';
 import { THRESHOLDS } from '@/lib/constants';
 import { Card } from '@/components/ui/card';
@@ -21,8 +21,9 @@ export default function LiftsTab({ state }: LiftsTabProps) {
   const [isGeneratingTotem, setIsGeneratingTotem] = useState(false);
   const [totem, setTotem] = useState<{ url: string; desc: string } | null>(null);
 
-  const radarData = getRadarData(state.lifts);
-  const weightHistory = state.settings.weightHistory || [];
+  // Memoize data processing
+  const radarData = useMemo(() => getRadarData(state.lifts), [state.lifts]);
+  const weightHistory = useMemo(() => state.settings.weightHistory || [], [state.settings.weightHistory]);
 
   const handleGenerateTotem = async () => {
     setIsGeneratingTotem(true);
@@ -43,7 +44,6 @@ export default function LiftsTab({ state }: LiftsTabProps) {
         <h1 className="hero-title">Iron <span className="text-accent">Profile</span></h1>
       </header>
 
-      {/* Spirit Totem Section */}
       <section className="mb-10">
         <h3 className="section-header">Athlete Spirit Totem</h3>
         <Card className="p-6 bg-secondary/30 border-border overflow-hidden relative">
@@ -86,7 +86,6 @@ export default function LiftsTab({ state }: LiftsTabProps) {
         </Card>
       </section>
 
-      {/* Radar Chart Section */}
       <section className="mb-10">
         <h3 className="section-header">Strength Balance HUD</h3>
         <Card className="p-4 bg-secondary/30 border-border h-[300px] flex items-center justify-center">
@@ -106,7 +105,6 @@ export default function LiftsTab({ state }: LiftsTabProps) {
         </Card>
       </section>
 
-      {/* Bodyweight Trend */}
       <section className="mb-10">
         <h3 className="section-header">Mass Telemetry</h3>
         <Card className="p-5 bg-secondary/40 border-border">
@@ -200,7 +198,6 @@ export default function LiftsTab({ state }: LiftsTabProps) {
         </div>
       </section>
 
-      {/* Mission History */}
       <section className="mb-10">
         <h3 className="section-header">Mission History</h3>
         <div className="space-y-3">

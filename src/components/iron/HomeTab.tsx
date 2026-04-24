@@ -1,11 +1,11 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { IronState } from '@/types/iron';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Settings, Zap, Clock, Cloud, Target, ChevronRight, Volume2, Loader2, Square, Brain, Terminal } from 'lucide-react';
+import { Settings, Zap, Clock, Cloud, Volume2, Square, Brain, Terminal } from 'lucide-react';
 import { MUSCLES } from '@/lib/constants';
 import { getOverallRank, getOverallRankProgress, getNearestMilestone, getCNSFatigue, getAthleteLevel } from '@/lib/iron-utils';
 import { getTacticalVoice } from '@/ai/flows/ai-coach-voice-flow';
@@ -28,12 +28,16 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
   const [dailyTip, setDailyTip] = useState<{title: string, content: string, category: string} | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   
-  const rank = getOverallRank(state.lifts);
-  const { nextRank, progress: rankProgress, remaining } = getOverallRankProgress(state.lifts);
-  const milestone = getNearestMilestone(state.lifts);
+  // Memoize heavy derived state calculations
+  const rank = useMemo(() => getOverallRank(state.lifts), [state.lifts]);
+  const rankProgressData = useMemo(() => getOverallRankProgress(state.lifts), [state.lifts]);
+  const milestone = useMemo(() => getNearestMilestone(state.lifts), [state.lifts]);
+  const cnsLoad = useMemo(() => getCNSFatigue(state.streak, state.activity), [state.streak, state.activity]);
+  const athleteLevelData = useMemo(() => getAthleteLevel(state.xp || 0), [state.xp]);
+
   const name = state.settings.name || 'Athlete';
-  const cnsLoad = getCNSFatigue(state.streak, state.activity);
-  const { level, progress: levelProgress } = getAthleteLevel(state.xp || 0);
+  const { nextRank, progress: rankProgress, remaining } = rankProgressData;
+  const { level, progress: levelProgress } = athleteLevelData;
   
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
@@ -130,7 +134,6 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
         />
       )}
 
-      {/* Level & XP HUD */}
       <Card className="p-4 mb-6 bg-[#121212] border-accent/20 relative overflow-hidden group">
         <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
           <Terminal className="w-12 h-12 text-accent" />
@@ -151,7 +154,6 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
         </div>
       </Card>
 
-      {/* Daily Tactical Intel */}
       {dailyTip && (
         <section className="mb-6">
           <h3 className="section-header">Command Intel</h3>
@@ -168,7 +170,6 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
         </section>
       )}
 
-      {/* Vitals Grid */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <Card className="p-4 bg-secondary/30 border-border">
           <p className="eyebrow flex items-center gap-2"><Zap className="w-3 h-3 text-accent" /> Streak</p>
@@ -186,7 +187,6 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
         </Card>
       </div>
 
-      {/* Rank Progression Card */}
       <Card className="p-5 mb-6 bg-secondary border-border overflow-hidden relative group">
         <div className="flex justify-between items-end mb-3">
           <div>
@@ -205,7 +205,6 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
         </div>
       </Card>
 
-      {/* Biological Recovery Status */}
       <section>
         <h3 className="section-header">Biological Status</h3>
         <Card className="p-8 bg-secondary/30 border-border flex flex-col items-center">
