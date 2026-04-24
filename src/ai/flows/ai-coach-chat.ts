@@ -1,6 +1,7 @@
 'use server';
 /**
  * @fileOverview An AI coach agent that provides personalized advice and workout plans.
+ * Hardened with defensive schema handling and telemetry sanitization.
  */
 
 import {ai} from '@/ai/genkit';
@@ -71,15 +72,23 @@ const generateWorkoutPlanTool = ai.defineTool(
     name: 'generateWorkoutPlan',
     description: 'Generates a 12-week plan. Call when user asks for a plan, program, or schedule.',
     inputSchema: z.object({
-      lifts: z.record(z.number()).nullish().default({}),
+      lifts: z.record(z.any()).nullish().default({}),
     }),
     outputSchema: WorkoutPlanSchema,
   },
   async (input) => {
     const lifts = input.lifts || {};
-    const bp = lifts['Bench Press'] || 135;
-    const sq = lifts['Squat'] || 185;
-    const dl = lifts['Deadlift'] || 225;
+    // Extract PR values safely from lift objects or raw numbers
+    const getPr = (name: string, fallback: number) => {
+      const data = lifts[name];
+      if (typeof data === 'number') return data;
+      if (data && typeof data === 'object') return data.pr || fallback;
+      return fallback;
+    };
+
+    const bp = getPr('Bench Press', 135);
+    const sq = getPr('Squat', 185);
+    const dl = getPr('Deadlift', 225);
     
     return {
       totalWeeks: 12,
@@ -150,7 +159,10 @@ const aiCoachChatFlow = ai.defineFlow(
     try {
       const safeLifts = input.lifts || {};
       const liftsSummary = Object.entries(safeLifts)
-        .map(([l, d]: [string, any]) => `${l}: ${d?.pr || 0}lb`)
+        .map(([l, d]: [string, any]) => {
+          const pr = typeof d === 'number' ? d : d?.pr || 0;
+          return `${l}: ${pr}lb`;
+        })
         .join(', ') || 'No data recorded.';
 
       const { output } = await aiCoachPrompt({

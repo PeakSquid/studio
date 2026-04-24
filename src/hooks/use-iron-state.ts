@@ -36,6 +36,10 @@ const DEFAULT_STATE: IronState = {
 
 const STORAGE_KEY = 'ironrank_state_v12';
 
+/**
+ * Manages the persistent IronRank athlete state with cloud synchronization.
+ * Hardened with defensive merging logic to prevent telemetry corruption.
+ */
 export function useIronState() {
   const { user, isUserLoading } = useUser();
   const db = useFirestore();
@@ -53,13 +57,28 @@ export function useIronState() {
   useEffect(() => {
     if (!isUserLoading && !isRemoteLoading) {
       if (remoteData) {
-        setState((prev) => ({ 
-          ...prev, 
-          ...remoteData,
-          id: user?.uid || prev.id,
-          lifts: remoteData.lifts ? { ...prev.lifts, ...remoteData.lifts } : prev.lifts,
-          settings: remoteData.settings ? { ...prev.settings, ...remoteData.settings } : prev.settings,
-        }));
+        setState((prev) => {
+          // Robust deep merge to ensure valid local keys aren't overwritten by nulls
+          const mergedLifts = { ...prev.lifts };
+          if (remoteData.lifts && typeof remoteData.lifts === 'object') {
+            Object.entries(remoteData.lifts).forEach(([key, val]) => {
+              if (val) mergedLifts[key] = val as any;
+            });
+          }
+
+          const mergedSettings = { ...prev.settings };
+          if (remoteData.settings && typeof remoteData.settings === 'object') {
+            Object.assign(mergedSettings, remoteData.settings);
+          }
+
+          return { 
+            ...prev, 
+            ...remoteData,
+            id: user?.uid || prev.id,
+            lifts: mergedLifts,
+            settings: mergedSettings,
+          };
+        });
       } else {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {

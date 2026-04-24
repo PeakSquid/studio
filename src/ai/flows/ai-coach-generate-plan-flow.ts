@@ -1,6 +1,7 @@
 'use server';
 /**
  * @fileOverview This file defines a Genkit flow for generating a personalized 12-week training plan.
+ * Hardened with resilient schema validation and biometric sanitization.
  */
 
 import {ai} from '@/ai/genkit';
@@ -86,8 +87,12 @@ const aiCoachGeneratePlanFlow = ai.defineFlow(
       const { getOverallRank } = await import('@/lib/iron-utils');
       const safeLifts = input.lifts || {};
       const liftsSummary = Object.entries(safeLifts)
-        .map(([l, d]: [string, any]) => `${l}: ${d?.pr || 0} lb`)
+        .map(([l, d]: [string, any]) => {
+          const pr = typeof d === 'number' ? d : d?.pr || 0;
+          return `${l}: ${pr} lb`;
+        })
         .join(', ') || 'No data recorded.';
+      
       const overallRankValue = getOverallRank(safeLifts as any);
 
       const { output } = await generatePlanPrompt({
