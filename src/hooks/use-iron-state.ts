@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { IronState } from '@/types/iron';
 
-const STORAGE_KEY = 'ironrank_state_v3';
+const STORAGE_KEY = 'ironrank_state_v4';
 
 const DEFAULT_STATE: IronState = {
   lifts: {
