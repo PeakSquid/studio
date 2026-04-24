@@ -7,8 +7,8 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const LiftDataSchema = z.object({
-  pr: z.number().describe('Personal record for the lift in pounds.'),
-  reps: z.number().describe('Reps achieved at the personal record weight.'),
+  pr: z.number().default(0).describe('Personal record for the lift in pounds.'),
+  reps: z.number().default(0).describe('Reps achieved at the personal record weight.'),
 }).passthrough();
 
 const ExerciseSchema = z.object({
@@ -48,7 +48,7 @@ const WorkoutPlanSchema = z.object({
 
 const AICoachChatInputSchema = z.object({
   query: z.string().describe('The user\'s message.'),
-  lifts: z.record(z.string(), LiftDataSchema).describe('Current records.'),
+  lifts: z.record(z.string(), LiftDataSchema).default({}).describe('Current records.'),
   overallRank: z.string().describe('The user\'s rank.'),
   streak: z.number().describe('User\'s streak.'),
   workoutsCompleted: z.number().describe('Total workouts.'),
@@ -76,14 +76,15 @@ const generateWorkoutPlanTool = ai.defineTool(
     name: 'generateWorkoutPlan',
     description: 'Generates a 12-week plan. Call when user asks for a plan, program, or schedule.',
     inputSchema: z.object({
-      lifts: z.record(z.string(), z.number()),
+      lifts: z.record(z.string(), z.number()).optional().default({}),
     }),
     outputSchema: WorkoutPlanSchema,
   },
   async (input) => {
-    const bp = input.lifts['Bench Press'] || 135;
-    const sq = input.lifts['Squat'] || 185;
-    const dl = input.lifts['Deadlift'] || 225;
+    const lifts = input.lifts || {};
+    const bp = lifts['Bench Press'] || 135;
+    const sq = lifts['Squat'] || 185;
+    const dl = lifts['Deadlift'] || 225;
     
     return {
       totalWeeks: 12,
@@ -150,13 +151,15 @@ const aiCoachChatFlow = ai.defineFlow(
     outputSchema: AICoachChatOutputSchema,
   },
   async (input) => {
-    const liftsSummary = Object.entries(input.lifts)
-      .map(([l, d]) => `${l}: ${d.pr}lb`)
-      .join(', ');
-
     try {
+      const lifts = input.lifts || {};
+      const liftsSummary = Object.entries(lifts)
+        .map(([l, d]) => `${l}: ${d?.pr || 0}lb`)
+        .join(', ') || 'No data recorded.';
+
       const { output } = await aiCoachPrompt({
         ...input,
+        lifts,
         liftsSummary,
       });
 
@@ -166,6 +169,7 @@ const aiCoachChatFlow = ai.defineFlow(
 
       return output;
     } catch (error: any) {
+      console.error('AI Coach Chat Error:', error);
       return { 
         reply: `Tactical downlink failure: ${error.message || 'Unknown CNS disruption'}. Check signal and retry.` 
       };

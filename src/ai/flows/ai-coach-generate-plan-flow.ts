@@ -17,13 +17,14 @@ const THRESHOLDS = {
 };
 
 function getRank(lift: string, pr: number): string {
-  const tiers = THRESHOLDS[lift as keyof typeof THRESHOLDS] || [];
+  const tiers = (THRESHOLDS as any)[lift] || [];
   let rank = 'Bronze';
   for (const t of tiers) { if (pr >= t.min) rank = t.r; }
   return rank;
 }
 
 function overallRank(lifts: Record<string, { pr: number; reps: number }>): string {
+  if (!lifts) return 'Bronze';
   const all = Object.entries(lifts).map(([l,d]) => getRank(l,d.pr));
   const c = {Bronze:0,Silver:0,Gold:0,Elite:0};
   all.forEach(r => (c as any)[r]++);
@@ -37,9 +38,9 @@ function overallRank(lifts: Record<string, { pr: number; reps: number }>): strin
 const AICoachGeneratePlanInputSchema = z.object({
   userName: z.string().describe('The name of the user, for personalization.'),
   lifts: z.record(z.string(), z.object({
-    pr: z.number().describe('Personal record weight for the lift in lbs.'),
-    reps: z.number().describe('Reps achieved at the personal record weight.'),
-  }).passthrough()).describe('An object containing current personal records for various lifts.'),
+    pr: z.number().default(0).describe('Personal record weight for the lift in lbs.'),
+    reps: z.number().default(0).describe('Reps achieved at the personal record weight.'),
+  }).passthrough()).default({}).describe('An object containing current personal records for various lifts.'),
   streak: z.number().describe('Current workout streak in days.'),
   workoutsCompleted: z.number().describe('Total number of workouts completed.'),
   bodyweight: z.number().describe('User\'s bodyweight in lbs.'),
@@ -114,14 +115,16 @@ const aiCoachGeneratePlanFlow = ai.defineFlow(
     outputSchema: AICoachGeneratePlanOutputSchema,
   },
   async (input) => {
-    const liftsSummary = Object.entries(input.lifts)
-      .map(([l, d]) => `${l}: ${d.pr} lb (${getRank(l, d.pr)})`)
-      .join(', ');
-    const overallRankValue = overallRank(input.lifts);
-
     try {
+      const lifts = input.lifts || {};
+      const liftsSummary = Object.entries(lifts)
+        .map(([l, d]) => `${l}: ${d?.pr || 0} lb (${getRank(l, d?.pr || 0)})`)
+        .join(', ') || 'No data recorded.';
+      const overallRankValue = overallRank(lifts);
+
       const { output } = await generatePlanPrompt({
         ...input,
+        lifts,
         liftsSummary,
         overallRankValue,
       });
@@ -132,6 +135,7 @@ const aiCoachGeneratePlanFlow = ai.defineFlow(
 
       return output;
     } catch (error: any) {
+      console.error('AI Generate Plan Error:', error);
       throw new Error(`Plan generation uplink failure: ${error.message}`);
     }
   }
