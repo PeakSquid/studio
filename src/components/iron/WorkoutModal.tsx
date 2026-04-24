@@ -1,0 +1,264 @@
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { IronState } from '@/types/iron';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { X, Check, Timer, ChevronLeft, ChevronRight, Zap } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+type WorkoutModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  state: IronState;
+  updateState: (updater: (prev: IronState) => IronState) => void;
+};
+
+export default function WorkoutModal({ isOpen, onClose, state, updateState }: WorkoutModalProps) {
+  const workout = state.plan?.workouts.find(w => w.type === state.plan?.schedule[new Date().getDay().toString()]);
+  
+  const [activeExIdx, setActiveExIdx] = useState(0);
+  const [sets, setSets] = useState<any[][]>([]);
+  const [phase, setPhase] = useState<'workout' | 'done'>('workout');
+  const [restTime, setRestTime] = useState(0);
+  const [totalRest, setTotalRest] = useState(90);
+
+  useEffect(() => {
+    if (workout) {
+      const initialSets = workout.exercises.map(ex => 
+        Array.from({ length: ex.sets }, () => ({
+          weight: ex.weight || 45,
+          reps: parseInt(ex.reps) || 8,
+          done: false
+        }))
+      );
+      setSets(initialSets);
+    }
+  }, [workout]);
+
+  useEffect(() => {
+    let timer: any;
+    if (restTime > 0) {
+      timer = setInterval(() => setRestTime(prev => prev - 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [restTime]);
+
+  if (!workout) return null;
+
+  const currentEx = workout.exercises[activeExIdx];
+  const currentSets = sets[activeExIdx] || [];
+  
+  const totalSets = sets.flat().length;
+  const doneSetsCount = sets.flat().filter(s => s.done).length;
+  const progressPct = totalSets > 0 ? (doneSetsCount / totalSets) * 100 : 0;
+
+  const toggleSet = (idx: number) => {
+    const newSets = [...sets];
+    const set = newSets[activeExIdx][idx];
+    set.done = !set.done;
+    
+    if (set.done) {
+      setRestTime(isCompound(currentEx.name) ? 120 : 90);
+      setTotalRest(isCompound(currentEx.name) ? 120 : 90);
+    }
+    
+    setSets(newSets);
+  };
+
+  const handleFinish = () => {
+    const totalVol = sets.flat().reduce((acc, s) => acc + (s.done ? s.weight * s.reps : 0), 0);
+    
+    updateState(prev => {
+      const newActivity = [...prev.activity];
+      newActivity.shift();
+      newActivity.push(2);
+      
+      return {
+        ...prev,
+        workoutsCompleted: prev.workoutsCompleted + 1,
+        streak: prev.streak + 1,
+        activity: newActivity,
+        lastWorkout: new Date().toISOString()
+      };
+    });
+    
+    setPhase('done');
+  };
+
+  const isCompound = (name: string) => {
+    const compounds = ['bench press', 'squat', 'deadlift', 'overhead press', 'barbell row'];
+    return compounds.some(c => name.toLowerCase().includes(c));
+  };
+
+  if (phase === 'done') {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-md h-full p-0 bg-background border-none overflow-y-auto no-scrollbar">
+          <div className="flex flex-col items-center justify-center p-10 text-center min-h-screen">
+            <div className="w-24 h-24 rounded-full bg-accent/20 flex items-center justify-center text-5xl mb-6 animate-pr-pop">⚡</div>
+            <h1 className="hero-title text-6xl mb-2">Workout<br/><span className="text-accent">Complete!</span></h1>
+            
+            <div className="grid grid-cols-2 gap-4 w-full my-10">
+              <div className="bg-secondary p-4 rounded-2xl border border-border">
+                <div className="font-headline text-3xl leading-none">{doneSetsCount}</div>
+                <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">Sets</div>
+              </div>
+              <div className="bg-secondary p-4 rounded-2xl border border-border">
+                <div className="font-headline text-3xl leading-none">{workout.exercises.length}</div>
+                <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">Exercises</div>
+              </div>
+            </div>
+
+            <button 
+              onClick={onClose}
+              className="w-full bg-accent text-accent-foreground font-bold py-4 rounded-2xl text-lg transition-transform active:scale-95"
+            >
+              Finish & Save
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md h-screen flex flex-col p-0 bg-background border-none shadow-none gap-0">
+        <header className="px-6 pt-10 pb-4 border-b border-border flex items-start justify-between bg-background">
+          <div>
+            <h2 className="font-headline text-3xl leading-none">{workout.name}</h2>
+            <p className="text-xs text-muted-foreground mt-1">{workout.focus}</p>
+          </div>
+          <button onClick={onClose} className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center transition-transform active:scale-90">
+            <X className="w-4 h-4" />
+          </button>
+        </header>
+
+        <div className="flex gap-2 p-3 overflow-x-auto no-scrollbar bg-secondary/30 border-b border-border">
+          {workout.exercises.map((ex, i) => (
+            <button 
+              key={i} 
+              onClick={() => setActiveExIdx(i)}
+              className={cn(
+                "w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm transition-all flex-shrink-0",
+                i === activeExIdx ? "bg-accent text-accent-foreground scale-110" : "bg-secondary border border-border text-muted-foreground"
+              )}
+            >
+              {i + 1}
+            </button>
+          ))}
+          <div className="flex-1" />
+          <div className="flex items-center text-[11px] font-bold text-muted-foreground pr-2">
+            {doneSetsCount}/{totalSets} SETS
+          </div>
+        </div>
+
+        <div className="h-1 bg-secondary w-full">
+          <div className="h-full bg-accent transition-all duration-500" style={{ width: `${progressPct}%` }} />
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-6 no-scrollbar">
+          <div className="mb-6">
+            <div className="eyebrow">Exercise {activeExIdx + 1} of {workout.exercises.length}</div>
+            <h3 className="font-headline text-4xl leading-tight uppercase tracking-tight">{currentEx.name}</h3>
+          </div>
+
+          <div className="space-y-3">
+            {currentSets.map((set, si) => (
+              <Card 
+                key={si} 
+                className={cn(
+                  "p-3 flex items-center gap-4 border transition-all",
+                  set.done ? "bg-accent/10 border-accent/30" : "bg-secondary border-border"
+                )}
+              >
+                <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs", set.done ? "bg-accent text-accent-foreground" : "bg-background text-muted-foreground")}>
+                  {si + 1}
+                </div>
+                <div className="flex-1 flex gap-4">
+                  <div>
+                    <div className="font-black text-lg leading-none">{set.weight}<span className="text-[10px] font-sans text-muted-foreground ml-0.5">lb</span></div>
+                    <div className="text-[9px] font-black uppercase tracking-tighter text-muted-foreground">Weight</div>
+                  </div>
+                  <div>
+                    <div className="font-black text-lg leading-none">{set.reps}</div>
+                    <div className="text-[9px] font-black uppercase tracking-tighter text-muted-foreground">Reps</div>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => toggleSet(si)}
+                  className={cn(
+                    "w-12 h-12 rounded-xl flex items-center justify-center transition-all",
+                    set.done ? "bg-accent text-accent-foreground" : "bg-background border-2 border-border"
+                  )}
+                >
+                  <Check className={cn("w-6 h-6 stroke-[3]", !set.done && "opacity-0")} />
+                </button>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {restTime > 0 && (
+          <div className="p-4 bg-secondary border-t border-border animate-in slide-in-from-bottom-full duration-300">
+            <div className="flex items-center gap-4">
+              <div className="relative w-14 h-14 flex items-center justify-center">
+                <svg className="w-full h-full -rotate-90">
+                  <circle cx="28" cy="28" r="24" fill="none" stroke="currentColor" strokeWidth="4" className="text-background" />
+                  <circle 
+                    cx="28" cy="28" r="24" fill="none" stroke="currentColor" strokeWidth="4" 
+                    className="text-accent transition-all duration-1000"
+                    strokeDasharray={150}
+                    strokeDashoffset={150 * (1 - restTime / totalRest)}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center font-headline text-lg">
+                  {restTime}s
+                </div>
+              </div>
+              <div className="flex-1">
+                <div className="text-[10px] font-black tracking-widest text-muted-foreground uppercase">Resting</div>
+                <div className="text-sm font-bold">Recover for next set</div>
+              </div>
+              <button 
+                onClick={() => setRestTime(0)}
+                className="px-4 py-2 bg-background border border-border rounded-xl text-xs font-bold active:bg-accent active:text-accent-foreground transition-colors"
+              >
+                Skip
+              </button>
+            </div>
+          </div>
+        )}
+
+        <footer className="p-4 pt-2 pb-[env(safe-area-inset-bottom,16px)] bg-background border-t border-border flex gap-3">
+          <button 
+            disabled={activeExIdx === 0}
+            onClick={() => setActiveExIdx(prev => prev - 1)}
+            className="flex-1 bg-secondary text-foreground font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-30"
+          >
+            <ChevronLeft className="w-5 h-5" /> Prev
+          </button>
+          
+          {activeExIdx < workout.exercises.length - 1 ? (
+            <button 
+              onClick={() => setActiveExIdx(prev => prev + 1)}
+              className="flex-[2] bg-accent text-accent-foreground font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-[0_4px_20px_rgba(232,255,58,0.2)]"
+            >
+              Next Exercise <ChevronRight className="w-5 h-5" />
+            </button>
+          ) : (
+            <button 
+              onClick={handleFinish}
+              className={cn(
+                "flex-[2] font-bold py-4 rounded-2xl flex items-center justify-center gap-2",
+                doneSetsCount === totalSets ? "bg-accent text-accent-foreground shadow-[0_4px_20px_rgba(232,255,58,0.3)]" : "bg-secondary text-muted-foreground"
+              )}
+            >
+              Finish Workout <Zap className="w-5 h-5 fill-current" />
+            </button>
+          )}
+        </footer>
+      </DialogContent>
+    </Dialog>
+  );
+}
