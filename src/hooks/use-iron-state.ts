@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { IronState } from '@/types/iron';
 
@@ -6,21 +5,21 @@ const STORAGE_KEY = 'ironrank_state_v3';
 
 const DEFAULT_STATE: IronState = {
   lifts: {
-    'Bench Press': { pr: 135, reps: 1, history: [] },
-    'Squat': { pr: 185, reps: 1, history: [] },
-    'Deadlift': { pr: 225, reps: 1, history: [] },
-    'Overhead Press': { pr: 85, reps: 1, history: [] },
-    'Barbell Row': { pr: 115, reps: 1, history: [] },
-    'Pull-Up': { pr: 0, reps: 1, history: [] },
+    'Bench Press': { pr: 0, reps: 0, history: [] },
+    'Squat': { pr: 0, reps: 0, history: [] },
+    'Deadlift': { pr: 0, reps: 0, history: [] },
+    'Overhead Press': { pr: 0, reps: 0, history: [] },
+    'Barbell Row': { pr: 0, reps: 0, history: [] },
+    'Pull-Up': { pr: 0, reps: 0, history: [] },
   },
-  streak: 3,
+  streak: 0,
   lastWorkout: null,
-  activity: [0,0,0,1,2,0,2,2,0,1,2,2,0,0,0,1,2,2,0,2,2],
+  activity: Array(21).fill(0),
   chatHistory: [],
-  workoutsCompleted: 12,
+  workoutsCompleted: 0,
   plan: null,
-  unlockedAchievements: { 'first_workout': new Date().toISOString() },
-  settings: { unit: 'lb', name: '', bodyweight: 185, theme: 'iron' },
+  unlockedAchievements: {},
+  settings: { unit: 'lb', name: '', bodyweight: 0, theme: 'iron' },
   muscleRecovery: {},
   totalVolume: 0,
   weekStart: null,
