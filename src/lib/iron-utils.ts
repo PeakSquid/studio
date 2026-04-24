@@ -28,14 +28,12 @@ export function getOverallRankProgress(lifts: Record<string, LiftData>) {
   
   if (!nextRank) return { currentRank, nextRank: 'MAX', progress: 100, remaining: 0 };
 
-  // Logic: How many more lifts need to reach the NEXT rank criteria
-  let progress = 0;
   let totalRequired = 0;
   let currentCount = 0;
 
   if (nextRank === 'Silver') {
     totalRequired = 3;
-    currentCount = Object.values(lifts).filter(l => ranks.indexOf(getLiftRank('Bench Press', l.pr)) >= 1).length; // Hacky but works for demo
+    currentCount = Object.values(lifts).filter(l => ranks.indexOf(getLiftRank('Bench Press', l.pr)) >= 1).length;
   } else if (nextRank === 'Gold') {
     totalRequired = 4;
     currentCount = Object.values(lifts).filter(l => ranks.indexOf(getLiftRank('Bench Press', l.pr)) >= 2).length;
@@ -79,4 +77,22 @@ export function getLiftProgress(lift: string, weight: number) {
     }
   }
   return { pct: 0, nextLabel: tiers[0].r, toNext: tiers[0].min - weight };
+}
+
+export function calculatePlates(targetWeight: number, barWeight: number = 45) {
+  const availablePlates = [45, 25, 10, 5, 2.5];
+  let remainingWeight = (targetWeight - barWeight) / 2;
+  const result: Record<number, number> = {};
+
+  if (remainingWeight <= 0) return {};
+
+  for (const plate of availablePlates) {
+    const count = Math.floor(remainingWeight / plate);
+    if (count > 0) {
+      result[plate] = count;
+      remainingWeight = Number((remainingWeight - count * plate).toFixed(2));
+    }
+  }
+
+  return result;
 }

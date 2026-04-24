@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { IronState } from '@/types/iron';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { X, Check, ChevronLeft, ChevronRight, Zap } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { X, Check, ChevronLeft, ChevronRight, Zap, Calculator } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { calculatePlates } from '@/lib/iron-utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 type WorkoutModalProps = {
   isOpen: boolean;
@@ -157,9 +159,39 @@ export default function WorkoutModal({ isOpen, onClose, state, updateState }: Wo
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-6 no-scrollbar">
-          <div className="mb-6">
-            <div className="eyebrow">Objective {activeExIdx + 1} of {workout.exercises.length}</div>
-            <h3 className="font-headline text-4xl leading-tight uppercase tracking-tight">{currentEx.name}</h3>
+          <div className="mb-6 flex justify-between items-start">
+            <div>
+              <div className="eyebrow">Objective {activeExIdx + 1} of {workout.exercises.length}</div>
+              <h3 className="font-headline text-4xl leading-tight uppercase tracking-tight">{currentEx.name}</h3>
+            </div>
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="w-10 h-10 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground active:text-accent transition-colors">
+                  <Calculator className="w-5 h-5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 bg-popover border-border p-4 shadow-2xl rounded-2xl">
+                <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Plate Calculator</div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs border-b border-border pb-1">
+                    <span className="text-muted-foreground">Load</span>
+                    <span className="font-bold">{currentEx.weight} lb</span>
+                  </div>
+                  <div className="space-y-1 pt-1">
+                    {Object.entries(calculatePlates(currentEx.weight || 45)).map(([plate, count]) => (
+                      <div key={plate} className="flex justify-between items-center bg-secondary/50 px-2 py-1.5 rounded-lg border border-border/50">
+                        <span className="text-sm font-black text-accent">{plate} lb</span>
+                        <span className="text-xs font-bold text-muted-foreground">x {count} (each side)</span>
+                      </div>
+                    ))}
+                    {Object.keys(calculatePlates(currentEx.weight || 45)).length === 0 && (
+                      <div className="text-xs text-muted-foreground text-center py-2">Bar Only</div>
+                    )}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="space-y-3">
