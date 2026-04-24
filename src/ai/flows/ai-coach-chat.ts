@@ -61,6 +61,11 @@ const AICoachChatInputSchema = z.object({
 });
 export type AICoachChatInput = z.infer<typeof AICoachChatInputSchema>;
 
+// Internal schema that includes the processed summary for the prompt template
+const InternalAICoachPromptSchema = AICoachChatInputSchema.extend({
+  liftsSummary: z.string(),
+});
+
 const AICoachChatOutputSchema = z.object({
   reply: z.string().describe('The coach reply.'),
   plan: WorkoutPlanSchema.optional().describe('Personalized plan if requested.'),
@@ -118,7 +123,7 @@ const generateWorkoutPlanTool = ai.defineTool(
 
 const aiCoachPrompt = ai.definePrompt({
   name: 'aiCoachPrompt',
-  input: {schema: AICoachChatInputSchema},
+  input: {schema: InternalAICoachPromptSchema},
   output: {schema: AICoachChatOutputSchema},
   tools: [generateWorkoutPlanTool],
   prompt: `You are an elite AI weightlifting coach. Persona: "Grit & Iron". Authoritative, scientific, concise. Address the user as {{{userName}}}.

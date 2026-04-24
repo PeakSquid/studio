@@ -1,10 +1,6 @@
 'use server';
 /**
  * @fileOverview This file defines a Genkit flow for generating a personalized 12-week training plan.
- *
- * - aiCoachGeneratePlan - A function that generates an AI-powered 12-week training plan.
- * - AICoachGeneratePlanInput - The input type for the aiCoachGeneratePlan function.
- * - AICoachGeneratePlanOutput - The return type for the aiCoachGeneratePlan function.
  */
 
 import {ai} from '@/ai/genkit';
@@ -50,6 +46,12 @@ const AICoachGeneratePlanInputSchema = z.object({
 });
 export type AICoachGeneratePlanInput = z.infer<typeof AICoachGeneratePlanInputSchema>;
 
+// Internal schema including the derived fields for the prompt
+const InternalGeneratePlanPromptSchema = AICoachGeneratePlanInputSchema.extend({
+  liftsSummary: z.string(),
+  overallRankValue: z.string(),
+});
+
 // Output Schemas to match the expected JSON structure
 const ExerciseSchema = z.object({
   name: z.string().describe('Name of the exercise.'),
@@ -91,7 +93,7 @@ export type AICoachGeneratePlanOutput = z.infer<typeof AICoachGeneratePlanOutput
 
 const generatePlanPrompt = ai.definePrompt({
   name: 'generatePlanPrompt',
-  input: { schema: AICoachGeneratePlanInputSchema },
+  input: { schema: InternalGeneratePlanPromptSchema },
   output: { schema: AICoachGeneratePlanOutputSchema },
   prompt: `You are an expert AI weightlifting coach. Generate a personalized 12-week training plan for {{{userName}}} based on their current stats.
 
