@@ -1,5 +1,17 @@
 import type {Metadata} from 'next';
+import { Bebas_Neue, DM_Sans } from 'next/font/google';
 import './globals.css';
+
+const bebasNeue = Bebas_Neue({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-bebas-neue',
+});
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  variable: '--font-dm-sans',
+});
 
 export const metadata: Metadata = {
   title: 'IronRank',
@@ -12,11 +24,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" className={`${bebasNeue.variable} ${dmSans.variable} dark`} suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        {/* Fonts are now handled by next/font */}
       </head>
       <body className="font-body antialiased bg-background text-foreground overflow-hidden h-screen w-screen" suppressHydrationWarning>
         {children}

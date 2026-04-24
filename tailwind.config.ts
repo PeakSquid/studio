@@ -10,8 +10,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['DM Sans', 'sans-serif'],
-        headline: ['Bebas Neue', 'sans-serif'],
+        body: ['var(--font-dm-sans)', 'sans-serif'],
+        headline: ['var(--font-bebas-neue)', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {

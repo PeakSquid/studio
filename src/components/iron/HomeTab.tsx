@@ -4,13 +4,14 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { IronState } from '@/types/iron';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Settings, Zap, Clock, Cloud, Volume2, Square, Brain, Terminal, Shield, Activity, Target, BarChart3 } from 'lucide-react';
+import { Settings, Zap, Clock, Cloud, Volume2, Square, Brain, Terminal, Shield, Activity } from 'lucide-react';
 import { MUSCLES } from '@/lib/constants';
-import { getOverallRank, getOverallRankProgress, getNearestMilestone, getCNSFatigue, getAthleteLevel, getDailyObjective, getWeeklyTonnage } from '@/lib/iron-utils';
+import { getOverallRank, getCNSFatigue, getAthleteLevel, getDailyObjective, getWeeklyTonnage } from '@/lib/iron-utils';
 import { getTacticalVoice } from '@/ai/flows/ai-coach-voice-flow';
 import { getDailyTacticalTip } from '@/ai/flows/tactical-tip-flow';
 import SettingsModal from './SettingsModal';
 import { cn } from '@/lib/utils';
+import { LineChart, Line, ResponsiveContainer } from 'recharts';
 
 type HomeTabProps = {
   state: IronState;
@@ -25,6 +26,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
   const [dailyTip, setDailyTip] = useState<{title: string, content: string, category: string} | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   
   const rank = useMemo(() => getOverallRank(state.lifts), [state.lifts]);
@@ -35,9 +37,10 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
 
   const name = state.settings.name || 'Athlete';
   const { level, progress: levelProgress } = athleteLevelData;
-  const weeklyGoal = objective.targetVolume * 4; // Arbitrary 4-session weekly goal
+  const weeklyGoal = objective.targetVolume * 4; 
   
   useEffect(() => {
+    setIsHydrated(true);
     const timer = setInterval(() => setNow(new Date()), 60000);
     const fetchTip = async () => {
       try {
@@ -104,6 +107,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
         <div className="flex gap-2">
           <button 
             onClick={handleCombatBriefing}
+            aria-label={isBriefing ? "Stop Briefing" : "Start Tactical Briefing"}
             className={cn(
               "w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-95 glass-card",
               isBriefing ? "bg-accent/20 text-accent animate-pulse" : "text-muted-foreground hover:text-accent"
@@ -113,6 +117,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
           </button>
           <button 
             onClick={() => setIsSettingsOpen(true)}
+            aria-label="Open Settings"
             className="w-12 h-12 rounded-2xl glass-card flex items-center justify-center text-muted-foreground transition-all active:scale-95 hover:text-accent"
           >
             <Settings className="w-5 h-5" />
@@ -143,7 +148,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
             </div>
           </div>
           <Progress value={Math.min((weeklyTonnage / weeklyGoal) * 100, 100)} className="h-2 bg-background/50 mb-1" />
-          <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-muted-foreground/30">
+          <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-muted-foreground/60">
             <span>Monday Reset</span>
             <span>{Math.round((weeklyTonnage / weeklyGoal) * 100)}% Synchronized</span>
           </div>
@@ -176,7 +181,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
             </div>
           </div>
           <Progress value={levelProgress} className="h-2 bg-background/50 mb-1" />
-          <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-muted-foreground/30">
+          <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-muted-foreground/60">
             <span>SYNC NODE {level}</span>
             <span>NEXT CALIBRATION</span>
           </div>
@@ -224,7 +229,7 @@ export default function HomeTab({ state, onStartWorkout, updateState, isSyncing 
           <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
           <div className="relative w-full max-w-[220px] mb-12 animate-float">
             <div className="absolute inset-0 bg-accent/5 blur-3xl rounded-full" />
-            <svg viewBox="0 0 100 150" className="w-full h-auto relative z-10">
+            <svg viewBox="0 0 100 150" className="w-full h-auto relative z-10" role="img" aria-label="Muscle Recovery Map">
               <path d="M30 40 Q50 35 70 40 L65 55 Q50 60 35 55 Z" className={`muscle-map-path ${getRecoveryInfo('Chest').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
               <circle cx="25" cy="45" r="8" className={`muscle-map-path ${getRecoveryInfo('Shoulders').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />
               <circle cx="75" cy="45" r="8" className={`muscle-map-path ${getRecoveryInfo('Shoulders').status === 'Optimal' ? 'muscle-map-optimal' : 'muscle-map-fatigued'}`} />

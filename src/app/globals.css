@@ -15,7 +15,7 @@
     --secondary: 0 0% 12%;
     --secondary-foreground: 0 0% 94%;
     --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 53%;
+    --muted-foreground: 0 0% 65%; /* Improved contrast from 53% to 65% for accessibility */
     --accent: 67 100% 61%;
     --accent-foreground: 0 0% 0%;
     --destructive: 15 100% 61%;
@@ -49,11 +49,11 @@
 }
 
 .eyebrow {
-  @apply text-[10px] font-black tracking-[3px] uppercase text-muted-foreground/80 mb-1;
+  @apply text-[10px] font-black tracking-[3px] uppercase text-muted-foreground mb-1;
 }
 
 .section-header {
-  @apply text-[10px] font-black uppercase tracking-[4px] text-muted-foreground mb-5 flex items-center gap-3 after:h-px after:flex-1 after:bg-border/30;
+  @apply text-[10px] font-black uppercase tracking-[4px] text-muted-foreground/80 mb-5 flex items-center gap-3 after:h-px after:flex-1 after:bg-border/30;
 }
 
 .glass-card {
@@ -130,7 +130,7 @@
 }
 
 .hud-label {
-  @apply text-[9px] font-black uppercase tracking-[2px] text-muted-foreground/60;
+  @apply text-[9px] font-black uppercase tracking-[2px] text-muted-foreground;
 }
 
 .hud-value {
