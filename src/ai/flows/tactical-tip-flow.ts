@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A flow that generates a daily tactical strength tip.
@@ -25,6 +24,7 @@ const tacticalTipFlow = ai.defineFlow(
   },
   async () => {
     const { output } = await ai.generate({
+      model: 'googleai/gemini-1.5-flash',
       prompt: "Generate a daily tactical tip for an elite weightlifter. Focus on biomechanics, nervous system recovery, or high-performance nutrition. Persona: 'Grit & Iron'. Use short, punchy sentences.",
       output: { schema: TacticalTipOutputSchema },
     });

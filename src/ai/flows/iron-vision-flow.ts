@@ -44,6 +44,7 @@ const ironVisionFlow = ai.defineFlow(
       : 'Analyze the lifting form of the athlete in this photo. Provide a score (0-100), tactical biomechanical feedback, and any critical safety warnings.';
 
     const { output } = await ai.generate({
+      model: 'googleai/gemini-1.5-flash',
       prompt: [
         { text: `You are an elite strength coach. ${systemPrompt}` },
         { media: { url: input.photoDataUri, contentType: 'image/jpeg' } },

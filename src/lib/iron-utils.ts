@@ -1,5 +1,4 @@
-
-import { THRESHOLDS, MUSCLES } from './constants';
+import { THRESHOLDS } from './constants';
 import { IronState, LiftData } from '@/types/iron';
 
 export function getLiftRank(lift: string, weight: number): string {
@@ -13,9 +12,10 @@ export function getLiftRank(lift: string, weight: number): string {
 
 export function getOverallRank(lifts: Record<string, LiftData>): string {
   if (!lifts || typeof lifts !== 'object') return 'Bronze';
+  const ranks = ['Bronze', 'Silver', 'Gold', 'Elite'];
   const all = Object.entries(lifts).map(([l, d]) => getLiftRank(l, d?.pr || 0));
   const c: Record<string, number> = { Bronze: 0, Silver: 0, Gold: 0, Elite: 0 };
-  all.forEach(r => c[r]++);
+  all.forEach(r => { if (c[r] !== undefined) c[r]++; });
   
   if (c.Elite >= 4) return 'Elite';
   if (c.Gold >= 4) return 'Gold';
@@ -47,8 +47,8 @@ export function getOverallRankProgress(lifts: Record<string, LiftData>) {
   return {
     currentRank,
     nextRank,
-    progress: Math.min(Math.round((currentCount / totalRequired) * 100), 99),
-    remaining: totalRequired - currentCount
+    progress: Math.min(Math.round((currentCount / Math.max(totalRequired, 1)) * 100), 99),
+    remaining: Math.max(totalRequired - currentCount, 0)
   };
 }
 
@@ -75,7 +75,8 @@ export function getLiftProgress(lift: string, weight: number) {
     if (weight >= tiers[i].min) {
       const next = tiers[i + 1];
       if (!next) return { pct: 100, nextLabel: '', toNext: 0 };
-      const pct = Math.round(((weight - tiers[i].min) / (next.min - tiers[i].min)) * 100);
+      const range = next.min - tiers[i].min;
+      const pct = range > 0 ? Math.round(((weight - tiers[i].min) / range) * 100) : 100;
       return { pct: Math.min(pct, 100), nextLabel: next.r, toNext: next.min - weight };
     }
   }
@@ -107,7 +108,7 @@ export function getRadarData(lifts: Record<string, LiftData>) {
     const eliteMax = tiers[tiers.length - 1]?.min || 500;
     return {
       subject: name.split(' ')[0],
-      A: Math.min(Math.round(((data?.pr || 0) / eliteMax) * 100), 100),
+      A: eliteMax > 0 ? Math.min(Math.round(((data?.pr || 0) / eliteMax) * 100), 100) : 0,
       fullMark: 100,
     };
   });
@@ -121,11 +122,12 @@ export function getCNSFatigue(streak: number, activity: number[]) {
 }
 
 export function getAthleteLevel(xp: number) {
-  const safeXp = xp || 0;
+  const safeXp = Math.max(xp || 0, 0);
   const level = Math.floor(Math.sqrt(safeXp / 100)) + 1;
   const currentLevelXp = Math.pow(level - 1, 2) * 100;
   const nextLevelXp = Math.pow(level, 2) * 100;
-  const progress = Math.round(((safeXp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100);
+  const range = nextLevelXp - currentLevelXp;
+  const progress = range > 0 ? Math.round(((safeXp - currentLevelXp) / range) * 100) : 100;
   
   return { level, progress, nextLevelXp };
 }

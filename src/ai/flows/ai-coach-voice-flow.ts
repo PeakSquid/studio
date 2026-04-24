@@ -1,17 +1,14 @@
-
 'use server';
 /**
  * @fileOverview A flow that converts tactical coaching text into audio.
- * Includes robust module resolution for the wav package to ensure server stability.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
+import wav from 'wav';
 
 /**
  * Converts raw PCM audio data into a standard WAV format.
- * Uses dynamic import to handle CommonJS/ESM interop in Turbopack environments.
  */
 async function toWav(
   pcmData: Buffer,
@@ -19,21 +16,9 @@ async function toWav(
   rate = 24000,
   sampleWidth = 2
 ): Promise<string> {
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     try {
-      // Dynamic import to handle potential resolution issues during compilation
-      const wavModule = await import('wav');
-      
-      // Robustly determine the correct constructor for the WAV writer
-      const Writer = (wavModule.default && (wavModule.default as any).Writer) 
-        || (wavModule as any).Writer 
-        || wavModule.default;
-
-      if (!Writer) {
-        throw new Error('Tactical Audio Serialization Failure: wav.Writer constructor unavailable.');
-      }
-
-      const writer = new Writer({
+      const writer = new wav.Writer({
         channels,
         sampleRate: rate,
         bitDepth: sampleWidth * 8,
@@ -76,7 +61,7 @@ const tacticalVoiceFlow = ai.defineFlow(
   },
   async (input) => {
     const { media } = await ai.generate({
-      model: googleAI.model('gemini-2.5-flash-preview-tts'),
+      model: 'googleai/gemini-2.5-flash-preview-tts',
       config: {
         responseModalities: ['AUDIO'],
         speechConfig: {

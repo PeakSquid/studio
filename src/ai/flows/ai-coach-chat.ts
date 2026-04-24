@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview An AI coach agent that provides personalized advice and workout plans.
@@ -6,12 +5,6 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
-
-const LiftDataSchema = z.object({
-  pr: z.number().default(0),
-  reps: z.number().default(0),
-}).passthrough().optional();
 
 const ExerciseSchema = z.object({
   name: z.string(),
@@ -50,7 +43,7 @@ const WorkoutPlanSchema = z.object({
 
 const AICoachChatInputSchema = z.object({
   query: z.string().catch(''),
-  lifts: z.record(z.any()).optional().default({}),
+  lifts: z.record(z.any()).nullish().default({}),
   overallRank: z.string().optional().default('Bronze'),
   streak: z.number().optional().default(0),
   workoutsCompleted: z.number().optional().default(0),
@@ -78,7 +71,7 @@ const generateWorkoutPlanTool = ai.defineTool(
     name: 'generateWorkoutPlan',
     description: 'Generates a 12-week plan. Call when user asks for a plan, program, or schedule.',
     inputSchema: z.object({
-      lifts: z.record(z.number()).optional().default({}),
+      lifts: z.record(z.number()).nullish().default({}),
     }),
     outputSchema: WorkoutPlanSchema,
   },
@@ -125,7 +118,7 @@ const generateWorkoutPlanTool = ai.defineTool(
 
 const aiCoachPrompt = ai.definePrompt({
   name: 'aiCoachPrompt',
-  model: googleAI.model('gemini-1.5-flash'),
+  model: 'googleai/gemini-1.5-flash',
   input: {schema: InternalAICoachPromptSchema},
   output: {schema: AICoachChatOutputSchema},
   tools: [generateWorkoutPlanTool],

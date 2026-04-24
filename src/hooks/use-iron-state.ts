@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -35,14 +34,12 @@ const DEFAULT_STATE: IronState = {
   level: 1,
 };
 
-// Key versioning ensures a clean reset for the user if necessary
-const STORAGE_KEY = 'ironrank_state_v11';
+const STORAGE_KEY = 'ironrank_state_v12';
 
 export function useIronState() {
   const { user, isUserLoading } = useUser();
   const db = useFirestore();
   
-  // Stabilize the document reference
   const userDocRef = useMemoFirebase(() => {
     if (!db || !user) return null;
     return doc(db, 'users', user.uid);
@@ -53,18 +50,15 @@ export function useIronState() {
   const [state, setState] = useState<IronState>(DEFAULT_STATE);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Initial load logic: Prioritize remote data, fallback to local storage
   useEffect(() => {
     if (!isUserLoading && !isRemoteLoading) {
       if (remoteData) {
-        // Deeply merge to prevent null overwrites
         setState((prev) => ({ 
           ...prev, 
           ...remoteData,
+          id: user?.uid || prev.id,
           lifts: remoteData.lifts ? { ...prev.lifts, ...remoteData.lifts } : prev.lifts,
           settings: remoteData.settings ? { ...prev.settings, ...remoteData.settings } : prev.settings,
-          chatHistory: remoteData.chatHistory || prev.chatHistory,
-          unlockedAchievements: remoteData.unlockedAchievements || prev.unlockedAchievements,
         }));
       } else {
         const saved = localStorage.getItem(STORAGE_KEY);
@@ -79,22 +73,18 @@ export function useIronState() {
       }
       setIsLoaded(true);
     }
-  }, [remoteData, isRemoteLoading, isUserLoading]);
+  }, [remoteData, isRemoteLoading, isUserLoading, user?.uid]);
 
-  // Unified sync function
   const updateState = (updater: (prev: IronState) => IronState) => {
     setState((prev) => {
       let next = updater(prev);
       
-      // Enforce security rule consistency: Ensure athlete ID is in the document
       if (user && next.id !== user.uid) {
         next = { ...next, id: user.uid };
       }
       
-      // Persist locally
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       
-      // Cloud synchronization
       if (userDocRef) {
         setDocumentNonBlocking(userDocRef, next, { merge: true });
       }
