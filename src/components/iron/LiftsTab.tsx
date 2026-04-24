@@ -1,12 +1,15 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { IronState } from '@/types/iron';
 import { THRESHOLDS } from '@/lib/constants';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, CartesianGrid, Tooltip } from 'recharts';
-import { getLiftRank, getLiftProgress } from '@/lib/iron-utils';
+import { getLiftRank, getLiftProgress, getOverallRank } from '@/lib/iron-utils';
+import { generateSpiritTotem } from '@/ai/flows/generate-totem-flow';
+import { Loader2, Sparkles, Image as ImageIcon } from 'lucide-react';
+import Image from 'next/image';
 
 type LiftsTabProps = {
   state: IronState;
@@ -14,6 +17,9 @@ type LiftsTabProps = {
 };
 
 export default function LiftsTab({ state }: LiftsTabProps) {
+  const [isGeneratingTotem, setIsGeneratingTotem] = useState(false);
+  const [totem, setTotem] = useState<{ url: string; desc: string } | null>(null);
+
   const chartData = Object.entries(state.lifts).map(([name, data]) => ({
     name: name.split(' ')[0],
     fullName: name,
@@ -28,12 +34,67 @@ export default function LiftsTab({ state }: LiftsTabProps) {
     Elite: '#A855F7'
   };
 
+  const handleGenerateTotem = async () => {
+    setIsGeneratingTotem(true);
+    try {
+      const result = await generateSpiritTotem({ rank: getOverallRank(state.lifts) });
+      setTotem({ url: result.imageUrl, desc: result.description });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsGeneratingTotem(false);
+    }
+  };
+
   return (
     <div className="p-6 pt-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-32">
       <header className="mb-8">
         <p className="eyebrow">Power Metrics</p>
         <h1 className="hero-title">Iron <span className="text-accent">Profile</span></h1>
       </header>
+
+      {/* Spirit Totem Section */}
+      <section className="mb-10">
+        <h3 className="section-header">Athlete Spirit Totem</h3>
+        <Card className="p-6 bg-secondary/30 border-border overflow-hidden relative">
+          {!totem ? (
+            <div className="text-center py-10 space-y-4">
+              <div className="w-20 h-20 rounded-3xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent mx-auto">
+                <ImageIcon className="w-10 h-10" />
+              </div>
+              <div>
+                <h4 className="font-headline text-2xl uppercase">Identity Unidentified</h4>
+                <p className="text-xs text-muted-foreground max-w-[200px] mx-auto">Generate a unique AI spirit totem based on your current strength rank.</p>
+              </div>
+              <button 
+                onClick={handleGenerateTotem}
+                disabled={isGeneratingTotem}
+                className="bg-accent text-accent-foreground px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-[0_0_20px_rgba(232,255,58,0.2)] flex items-center gap-2 mx-auto"
+              >
+                {isGeneratingTotem ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                Invoke Totem
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4 animate-in zoom-in-95 duration-500">
+              <div className="relative aspect-square w-full max-w-[240px] mx-auto rounded-3xl overflow-hidden border-2 border-accent/30 shadow-[0_0_40px_rgba(232,255,58,0.1)]">
+                <Image src={totem.url} alt="Spirit Totem" fill className="object-cover" />
+              </div>
+              <div className="text-center">
+                <h4 className="font-headline text-2xl text-accent mb-1 uppercase">Spirit Identity Formed</h4>
+                <p className="text-sm italic text-muted-foreground">{totem.desc}</p>
+                <button 
+                  onClick={handleGenerateTotem}
+                  disabled={isGeneratingTotem}
+                  className="mt-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-accent transition-colors"
+                >
+                  Regenerate Telemetry
+                </button>
+              </div>
+            </div>
+          )}
+        </Card>
+      </section>
 
       {/* Distribution Chart */}
       <section className="mb-10">

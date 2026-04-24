@@ -9,12 +9,14 @@ import AchievementsTab from '@/components/iron/AchievementsTab';
 import PlanTab from '@/components/iron/PlanTab';
 import TabNavigation from '@/components/iron/TabNavigation';
 import WorkoutModal from '@/components/iron/WorkoutModal';
+import PRLogModal from '@/components/iron/PRLogModal';
 import { Plus } from 'lucide-react';
 
 export default function IronRankApp() {
   const { state, updateState, isLoaded } = useIronState();
   const [activeTab, setActiveTab] = useState('home');
   const [isWorkoutOpen, setIsWorkoutOpen] = useState(false);
+  const [isPRLogOpen, setIsPRLogOpen] = useState(false);
 
   if (!isLoaded) return null;
 
@@ -38,7 +40,7 @@ export default function IronRankApp() {
       {/* Floating Action Button (Only on Home and Lifts) */}
       {(activeTab === 'home' || activeTab === 'lifts') && (
         <button 
-          onClick={() => {/* Open PR Log Modal - Future Feature */}}
+          onClick={() => setIsPRLogOpen(true)}
           className="fixed right-6 bottom-28 w-16 h-16 rounded-3xl bg-accent text-accent-foreground flex items-center justify-center shadow-[0_8px_30px_rgba(232,255,58,0.4)] z-50 transition-all active:scale-90 hover:scale-105"
         >
           <Plus className="w-9 h-9 stroke-[3]" />
@@ -55,6 +57,13 @@ export default function IronRankApp() {
           updateState={updateState}
         />
       )}
+
+      <PRLogModal 
+        isOpen={isPRLogOpen}
+        onClose={() => setIsPRLogOpen(false)}
+        state={state}
+        updateState={updateState}
+      />
     </div>
   );
 }
