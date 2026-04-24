@@ -1,8 +1,10 @@
+
 import { THRESHOLDS } from './constants';
 import { IronState, LiftData } from '@/types/iron';
 
 /**
  * Determines the rank of a specific lift based on weight.
+ * Hardened with full null-checking.
  */
 export function getLiftRank(lift: string, weight: number): string {
   if (!lift) return 'Bronze';
@@ -17,9 +19,10 @@ export function getLiftRank(lift: string, weight: number): string {
 
 /**
  * Calculates the overall athlete rank based on all lifts.
+ * Robust iterate-safe logic.
  */
 export function getOverallRank(lifts: Record<string, LiftData>): string {
-  if (!lifts || typeof lifts !== 'object') return 'Bronze';
+  if (!lifts || typeof lifts !== 'object' || lifts === null) return 'Bronze';
   
   const ranks = ['Bronze', 'Silver', 'Gold', 'Elite'];
   const allRanks = Object.entries(lifts).map(([name, data]) => getLiftRank(name, data?.pr || 0));
@@ -35,13 +38,14 @@ export function getOverallRank(lifts: Record<string, LiftData>): string {
 
 /**
  * Calculates progress toward the next overall rank.
+ * Prevents "Cannot convert undefined to object" errors.
  */
 export function getOverallRankProgress(lifts: Record<string, LiftData>) {
   const currentRank = getOverallRank(lifts);
   const ranks = ['Bronze', 'Silver', 'Gold', 'Elite'];
   const nextRank = ranks[ranks.indexOf(currentRank) + 1];
   
-  if (!nextRank || !lifts || typeof lifts !== 'object') {
+  if (!nextRank || !lifts || typeof lifts !== 'object' || lifts === null) {
     return { currentRank, nextRank: 'MAX', progress: 100, remaining: 0 };
   }
 
@@ -80,7 +84,7 @@ export function getOverallRankProgress(lifts: Record<string, LiftData>) {
  * Identifies the lift nearest to its next biometric tier.
  */
 export function getNearestMilestone(lifts: Record<string, LiftData>) {
-  if (!lifts || typeof lifts !== 'object') return null;
+  if (!lifts || typeof lifts !== 'object' || lifts === null) return null;
   let nearest = null;
   let minDiff = Infinity;
 
@@ -113,7 +117,7 @@ export function getLiftProgress(lift: string, weight: number) {
       return { pct: Math.min(pct, 100), nextLabel: next.r, toNext: next.min - safeWeight };
     }
   }
-  return { pct: 0, nextLabel: tiers[0].r, toNext: tiers[0].min - safeWeight };
+  return { pct: 0, nextLabel: tiers[0]?.r || 'Bronze', toNext: (tiers[0]?.min || 0) - safeWeight };
 }
 
 /**
@@ -141,7 +145,7 @@ export function calculatePlates(targetWeight: number, barWeight: number = 45) {
  * Formats lift data for the radar HUD.
  */
 export function getRadarData(lifts: Record<string, LiftData>) {
-  if (!lifts || typeof lifts !== 'object') return [];
+  if (!lifts || typeof lifts !== 'object' || lifts === null) return [];
   return Object.entries(lifts).map(([name, data]) => {
     const tiers = THRESHOLDS[name as keyof typeof THRESHOLDS] || [];
     const eliteMax = tiers[tiers.length - 1]?.min || 500;
@@ -157,7 +161,7 @@ export function getRadarData(lifts: Record<string, LiftData>) {
  * Calculates CNS fatigue levels.
  */
 export function getCNSFatigue(streak: number, activity: number[]) {
-  const safeActivity = activity || [];
+  const safeActivity = Array.isArray(activity) ? activity : [];
   const recentWorkouts = safeActivity.slice(-7).filter(a => a === 2).length;
   let load = recentWorkouts * 15 + (streak || 0) * 5;
   return Math.min(load, 100);
@@ -198,8 +202,11 @@ export function getDailyObjective(state: IronState) {
 
 /**
  * Calculates weekly tonnage progress.
+ * Safe from null logs.
  */
 export function getWeeklyTonnage(workoutLogs: any[]) {
+  if (!workoutLogs || !Array.isArray(workoutLogs)) return 0;
+  
   const now = new Date();
   const day = now.getDay();
   const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Monday start
@@ -207,7 +214,7 @@ export function getWeeklyTonnage(workoutLogs: any[]) {
   monday.setHours(0, 0, 0, 0);
 
   const weeklyVolume = workoutLogs
-    .filter(log => new Date(log.date) >= monday)
+    .filter(log => log && log.date && new Date(log.date) >= monday)
     .reduce((sum, log) => sum + (log.volume || 0), 0);
 
   return weeklyVolume;

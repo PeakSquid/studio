@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -34,11 +35,11 @@ const DEFAULT_STATE: IronState = {
   level: 1,
 };
 
-const STORAGE_KEY = 'ironrank_state_v12';
+const STORAGE_KEY = 'ironrank_state_v13';
 
 /**
  * Manages the persistent IronRank athlete state with cloud synchronization.
- * Hardened with defensive merging logic to prevent telemetry corruption.
+ * Hardened with resilient merging logic to prevent telemetry corruption.
  */
 export function useIronState() {
   const { user, isUserLoading } = useUser();
@@ -71,12 +72,19 @@ export function useIronState() {
             Object.assign(mergedSettings, remoteData.settings);
           }
 
+          const mergedActivity = Array.isArray(remoteData.activity) 
+            ? [...remoteData.activity] 
+            : Array.isArray(prev.activity) ? [...prev.activity] : Array(21).fill(0);
+
           return { 
             ...prev, 
             ...remoteData,
-            id: user?.uid || prev.id,
+            id: user?.uid || prev.id || '',
             lifts: mergedLifts,
             settings: mergedSettings,
+            activity: mergedActivity,
+            workoutLogs: Array.isArray(remoteData.workoutLogs) ? remoteData.workoutLogs : prev.workoutLogs,
+            chatHistory: Array.isArray(remoteData.chatHistory) ? remoteData.chatHistory : prev.chatHistory,
           };
         });
       } else {

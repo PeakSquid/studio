@@ -1,6 +1,8 @@
+
 'use server';
 /**
- * @fileOverview A flow that generates a 5-second tactical hype video using Veo 3.0.
+ * @fileOverview A flow that generates a 5-second tactical hype video using Veo models.
+ * Hardened for robust binary handling and error resilience.
  */
 
 import { ai } from '@/ai/genkit';
@@ -42,12 +44,18 @@ const generateHypeVideoFlow = ai.defineFlow(
         throw new Error('Video generation downlink failure: Operation not returned.');
       }
 
-      // Poll for completion
-      while (!operation.done) {
+      // Poll for completion (Veo generation is slow)
+      let attempts = 0;
+      while (!operation.done && attempts < 24) { // Max 2 minutes
         operation = await ai.checkOperation(operation);
         if (!operation.done) {
           await new Promise((resolve) => setTimeout(resolve, 5000));
+          attempts++;
         }
+      }
+
+      if (!operation.done) {
+        throw new Error('Video generation timed out.');
       }
 
       if (operation.error) {
@@ -59,8 +67,8 @@ const generateHypeVideoFlow = ai.defineFlow(
         throw new Error('Failed to find the generated video in telemetry.');
       }
 
-      // Fetch and convert to base64
-      const fetch = (await import('node-fetch')).default;
+      // Fetch and convert to base64 using standard fetch/arrayBuffer
+      const fetch = (await import('node-fetch')).default as any;
       const videoDownloadResponse = await fetch(
         `${video.media!.url}&key=${process.env.GEMINI_API_KEY}`
       );
@@ -69,7 +77,8 @@ const generateHypeVideoFlow = ai.defineFlow(
         throw new Error('Failed to download video from storage.');
       }
 
-      const buffer = await videoDownloadResponse.buffer();
+      const arrayBuffer = await videoDownloadResponse.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
       const base64Video = buffer.toString('base64');
 
       return {
@@ -77,8 +86,7 @@ const generateHypeVideoFlow = ai.defineFlow(
       };
     } catch (e: any) {
       console.error('Hype Video Generation Error:', e);
-      // Return a fallback or throw
-      throw new Error(`Cinematic downlink failure: ${e.message}`);
+      throw new Error(`Cinematic downlink failure: ${e.message || 'Unknown Veo disruption'}`);
     }
   }
 );
