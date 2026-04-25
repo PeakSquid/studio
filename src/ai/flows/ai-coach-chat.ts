@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview An AI coach agent that provides personalized advice and workout plans.
@@ -38,7 +37,7 @@ const PlanGoalSchema = z.object({
 const WorkoutPlanSchema = z.object({
   totalWeeks: z.number(),
   blocks: z.array(PlanBlockSchema),
-  schedule: z.record(z.enum(['push', 'pull', 'legs', 'upper', 'lower', 'full', 'rest'])),
+  schedule: z.record(z.string()),
   workouts: z.array(WorkoutSchema),
   goals: z.array(PlanGoalSchema),
 });
@@ -149,42 +148,31 @@ Guidelines:
 User Message: {{{query}}}`,
 });
 
-const aiCoachChatFlow = ai.defineFlow(
-  {
-    name: 'aiCoachChatFlow',
-    inputSchema: AICoachChatInputSchema,
-    outputSchema: AICoachChatOutputSchema,
-  },
-  async (input) => {
-    try {
-      const safeLifts = input.lifts || {};
-      const liftsSummary = Object.entries(safeLifts)
-        .map(([l, d]: [string, any]) => {
-          const pr = typeof d === 'number' ? d : d?.pr || 0;
-          return `${l}: ${pr}lb`;
-        })
-        .join(', ') || 'No data recorded.';
-
-      const { output } = await aiCoachPrompt({
-        ...input,
-        lifts: safeLifts,
-        liftsSummary,
-      });
-
-      if (!output) {
-        return { reply: "Command logic error: Model failed to produce structured intelligence." };
-      }
-
-      return output;
-    } catch (error: any) {
-      console.error('AI Coach Chat Error:', error);
-      return { 
-        reply: `Tactical downlink failure: ${error.message || 'Signal disruption'}. Verify baseline and retry.` 
-      };
-    }
-  }
-);
-
 export async function aiCoachChat(input: AICoachChatInput): Promise<AICoachChatOutput> {
-  return aiCoachChatFlow(input);
+  try {
+    const safeLifts = input.lifts || {};
+    const liftsSummary = Object.entries(safeLifts)
+      .map(([l, d]: [string, any]) => {
+        const pr = typeof d === 'number' ? d : d?.pr || 0;
+        return `${l}: ${pr}lb`;
+      })
+      .join(', ') || 'No data recorded.';
+
+    const { output } = await aiCoachPrompt({
+      ...input,
+      lifts: safeLifts,
+      liftsSummary,
+    });
+
+    if (!output) {
+      return { reply: "Command logic error: Model failed to produce structured intelligence." };
+    }
+
+    return output;
+  } catch (error: any) {
+    console.error('AI Coach Chat Error:', error);
+    return { 
+      reply: `Tactical downlink failure: ${error.message || 'Signal disruption'}. Verify baseline and retry.` 
+    };
+  }
 }

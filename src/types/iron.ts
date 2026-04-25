@@ -1,4 +1,3 @@
-
 export type LiftData = {
   pr: number;
   reps: number;

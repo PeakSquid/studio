@@ -1,4 +1,3 @@
-
 import { THRESHOLDS } from './constants';
 import { IronState, LiftData } from '@/types/iron';
 
