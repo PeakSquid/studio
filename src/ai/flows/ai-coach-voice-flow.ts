@@ -1,6 +1,7 @@
 'use server';
 /**
  * @fileOverview A flow that converts tactical coaching text into audio.
+ * Hardened with resilient model references.
  */
 
 import { ai } from '@/ai/genkit';

@@ -1,7 +1,7 @@
 'use server';
 /**
  * @fileOverview This file defines a Genkit flow for generating a personalized 12-week training plan.
- * Hardened with resilient schema validation and biometric sanitization.
+ * Hardened with resilient model references and biomechanical sanitization.
  */
 
 import {ai} from '@/ai/genkit';
@@ -109,7 +109,7 @@ const aiCoachGeneratePlanFlow = ai.defineFlow(
       return output;
     } catch (error: any) {
       console.error('AI Generate Plan Error:', error);
-      throw new Error(`Plan generation uplink failure: ${error.message}`);
+      throw new Error(`Plan generation uplink failure: ${error.message || 'Unknown server disruption'}`);
     }
   }
 );

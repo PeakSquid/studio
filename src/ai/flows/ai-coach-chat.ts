@@ -1,7 +1,7 @@
 'use server';
 /**
  * @fileOverview An AI coach agent that provides personalized advice and workout plans.
- * Hardened with defensive schema handling and telemetry sanitization.
+ * Hardened with resilient model references and defensive telemetry handling.
  */
 
 import {ai} from '@/ai/genkit';
@@ -82,7 +82,7 @@ const generateWorkoutPlanTool = ai.defineTool(
     const getPr = (name: string, fallback: number) => {
       const data = lifts[name];
       if (typeof data === 'number') return data;
-      if (data && typeof data === 'object') return data.pr || fallback;
+      if (data && typeof data === 'object') return (data as any).pr || fallback;
       return fallback;
     };
 
@@ -178,8 +178,10 @@ const aiCoachChatFlow = ai.defineFlow(
       return output;
     } catch (error: any) {
       console.error('AI Coach Chat Error:', error);
+      // Detailed error reporting for debugging tactical failures
+      const errorMsg = error.message || 'Unknown CNS disruption';
       return { 
-        reply: `Tactical downlink failure: ${error.message || 'Unknown CNS disruption'}. Check signal and retry.` 
+        reply: `Tactical downlink failure: ${errorMsg}. Ensure biomechanical baseline is synchronized and retry.` 
       };
     }
   }
