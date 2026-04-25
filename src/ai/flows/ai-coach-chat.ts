@@ -1,10 +1,11 @@
+
 'use server';
 /**
  * @fileOverview An AI coach agent that provides personalized advice and workout plans.
  * Hardened with resilient model references and defensive telemetry handling.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, googleAIPlugin} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const ExerciseSchema = z.object({
@@ -78,7 +79,6 @@ const generateWorkoutPlanTool = ai.defineTool(
   },
   async (input) => {
     const lifts = input.lifts || {};
-    // Extract PR values safely from lift objects or raw numbers
     const getPr = (name: string, fallback: number) => {
       const data = lifts[name];
       if (typeof data === 'number') return data;
@@ -127,7 +127,7 @@ const generateWorkoutPlanTool = ai.defineTool(
 
 const aiCoachPrompt = ai.definePrompt({
   name: 'aiCoachPrompt',
-  model: 'googleai/gemini-1.5-flash',
+  model: googleAIPlugin.model('gemini-1.5-flash'),
   input: {schema: InternalAICoachPromptSchema},
   output: {schema: AICoachChatOutputSchema},
   tools: [generateWorkoutPlanTool],
@@ -172,16 +172,14 @@ const aiCoachChatFlow = ai.defineFlow(
       });
 
       if (!output) {
-        return { reply: "Command logic error: Model failed to produce structured intelligence. Please re-state query." };
+        return { reply: "Command logic error: Model failed to produce structured intelligence." };
       }
 
       return output;
     } catch (error: any) {
       console.error('AI Coach Chat Error:', error);
-      // Detailed error reporting for debugging tactical failures
-      const errorMsg = error.message || 'Unknown CNS disruption';
       return { 
-        reply: `Tactical downlink failure: ${errorMsg}. Ensure biomechanical baseline is synchronized and retry.` 
+        reply: `Tactical downlink failure: ${error.message || 'Signal disruption'}. Verify baseline and retry.` 
       };
     }
   }

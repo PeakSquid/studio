@@ -4,28 +4,28 @@ import { IronState, LiftData } from '@/types/iron';
 
 /**
  * Determines the rank of a specific lift based on weight.
- * Hardened with full null-checking.
+ * Hardened with full null-checking and defensive baselines.
  */
 export function getLiftRank(lift: string, weight: number): string {
-  if (!lift) return 'Bronze';
+  if (!lift || typeof weight !== 'number') return 'Bronze';
   const tiers = THRESHOLDS[lift as keyof typeof THRESHOLDS] || [];
   let rank = 'Bronze';
-  const safeWeight = weight || 0;
   for (const t of tiers) {
-    if (safeWeight >= t.min) rank = t.r;
+    if (weight >= t.min) rank = t.r;
   }
   return rank;
 }
 
 /**
  * Calculates the overall athlete rank based on all lifts.
- * Robust iterate-safe logic.
  */
 export function getOverallRank(lifts: Record<string, LiftData>): string {
-  if (!lifts || typeof lifts !== 'object' || lifts === null) return 'Bronze';
+  if (!lifts || typeof lifts !== 'object') return 'Bronze';
   
-  const ranks = ['Bronze', 'Silver', 'Gold', 'Elite'];
-  const allRanks = Object.entries(lifts).map(([name, data]) => getLiftRank(name, data?.pr || 0));
+  const allRanks = Object.entries(lifts).map(([name, data]) => {
+    const weight = typeof data === 'number' ? data : data?.pr || 0;
+    return getLiftRank(name, weight);
+  });
   
   const counts: Record<string, number> = { Bronze: 0, Silver: 0, Gold: 0, Elite: 0 };
   allRanks.forEach(r => { if (counts[r] !== undefined) counts[r]++; });
@@ -37,92 +37,27 @@ export function getOverallRank(lifts: Record<string, LiftData>): string {
 }
 
 /**
- * Calculates progress toward the next overall rank.
- * Prevents "Cannot convert undefined to object" errors.
- */
-export function getOverallRankProgress(lifts: Record<string, LiftData>) {
-  const currentRank = getOverallRank(lifts);
-  const ranks = ['Bronze', 'Silver', 'Gold', 'Elite'];
-  const currentIndex = ranks.indexOf(currentRank);
-  const nextRank = currentIndex < ranks.length - 1 ? ranks[currentIndex + 1] : null;
-  
-  if (!nextRank || !lifts || typeof lifts !== 'object' || lifts === null) {
-    return { currentRank, nextRank: 'MAX', progress: 100, remaining: 0 };
-  }
-
-  let totalRequired = 0;
-  let currentCount = 0;
-
-  if (nextRank === 'Silver') {
-    totalRequired = 3;
-    currentCount = Object.entries(lifts).filter(([name, data]) => {
-      const rank = getLiftRank(name, data?.pr || 0);
-      return ranks.indexOf(rank) >= 1;
-    }).length;
-  } else if (nextRank === 'Gold') {
-    totalRequired = 4;
-    currentCount = Object.entries(lifts).filter(([name, data]) => {
-      const rank = getLiftRank(name, data?.pr || 0);
-      return ranks.indexOf(rank) >= 2;
-    }).length;
-  } else if (nextRank === 'Elite') {
-    totalRequired = 4;
-    currentCount = Object.entries(lifts).filter(([name, data]) => {
-      const rank = getLiftRank(name, data?.pr || 0);
-      return ranks.indexOf(rank) >= 3;
-    }).length;
-  }
-
-  return {
-    currentRank,
-    nextRank,
-    progress: Math.min(Math.round((currentCount / Math.max(totalRequired, 1)) * 100), 99),
-    remaining: Math.max(totalRequired - currentCount, 0)
-  };
-}
-
-/**
- * Identifies the lift nearest to its next biometric tier.
- */
-export function getNearestMilestone(lifts: Record<string, LiftData>) {
-  if (!lifts || typeof lifts !== 'object' || lifts === null) return null;
-  let nearest = null;
-  let minDiff = Infinity;
-
-  for (const [name, data] of Object.entries(lifts)) {
-    const { toNext, nextLabel } = getLiftProgress(name, data?.pr || 0);
-    if (toNext > 0 && toNext < minDiff) {
-      minDiff = toNext;
-      nearest = { name, toNext, nextLabel };
-    }
-  }
-  return nearest;
-}
-
-/**
  * Calculates percentage progress for a specific lift.
  */
 export function getLiftProgress(lift: string, weight: number) {
-  if (!lift) return { pct: 0, nextLabel: '', toNext: 0 };
+  if (!lift || typeof weight !== 'number') return { pct: 0, nextLabel: 'Bronze', toNext: 0 };
   const tiers = THRESHOLDS[lift as keyof typeof THRESHOLDS] || [];
-  if (tiers.length === 0) return { pct: 0, nextLabel: '', toNext: 0 };
-
-  const safeWeight = weight || 0;
+  if (tiers.length === 0) return { pct: 0, nextLabel: 'Bronze', toNext: 0 };
 
   for (let i = tiers.length - 1; i >= 0; i--) {
-    if (safeWeight >= tiers[i].min) {
+    if (weight >= tiers[i].min) {
       const next = tiers[i + 1];
-      if (!next) return { pct: 100, nextLabel: '', toNext: 0 };
+      if (!next) return { pct: 100, nextLabel: 'MAX', toNext: 0 };
       const range = next.min - tiers[i].min;
-      const pct = range > 0 ? Math.round(((safeWeight - tiers[i].min) / range) * 100) : 100;
-      return { pct: Math.min(pct, 100), nextLabel: next.r, toNext: next.min - safeWeight };
+      const pct = range > 0 ? Math.round(((weight - tiers[i].min) / range) * 100) : 100;
+      return { pct: Math.min(pct, 100), nextLabel: next.r, toNext: next.min - weight };
     }
   }
-  return { pct: 0, nextLabel: tiers[0]?.r || 'Bronze', toNext: (tiers[0]?.min || 0) - safeWeight };
+  return { pct: 0, nextLabel: tiers[0]?.r || 'Bronze', toNext: (tiers[0]?.min || 0) - weight };
 }
 
 /**
- * Calculates weight plate requirements for a given load.
+ * Calculates weight plate requirements.
  */
 export function calculatePlates(targetWeight: number, barWeight: number = 45) {
   const availablePlates = [45, 25, 10, 5, 2.5];
@@ -146,13 +81,14 @@ export function calculatePlates(targetWeight: number, barWeight: number = 45) {
  * Formats lift data for the radar HUD.
  */
 export function getRadarData(lifts: Record<string, LiftData>) {
-  if (!lifts || typeof lifts !== 'object' || lifts === null) return [];
+  if (!lifts || typeof lifts !== 'object') return [];
   return Object.entries(lifts).map(([name, data]) => {
     const tiers = THRESHOLDS[name as keyof typeof THRESHOLDS] || [];
     const eliteMax = tiers[tiers.length - 1]?.min || 500;
+    const weight = typeof data === 'number' ? data : data?.pr || 0;
     return {
       subject: name.split(' ')[0],
-      A: eliteMax > 0 ? Math.min(Math.round(((data?.pr || 0) / eliteMax) * 100), 100) : 0,
+      A: eliteMax > 0 ? Math.min(Math.round((weight / eliteMax) * 100), 100) : 0,
       fullMark: 100,
     };
   });
@@ -164,7 +100,7 @@ export function getRadarData(lifts: Record<string, LiftData>) {
 export function getCNSFatigue(streak: number, activity: number[]) {
   const safeActivity = Array.isArray(activity) ? activity : [];
   const recentWorkouts = safeActivity.slice(-7).filter(a => a === 2).length;
-  let load = recentWorkouts * 15 + (streak || 0) * 5;
+  let load = (recentWorkouts * 15) + ((streak || 0) * 5);
   return Math.min(load, 100);
 }
 
@@ -188,8 +124,7 @@ export function getAthleteLevel(xp: number) {
 export function getDailyObjective(state: IronState) {
   if (!state) return { targetVolume: 2500, label: 'Initialize Mission', type: 'Calibration' };
   
-  const safeLifts = state.lifts || {};
-  const rank = getOverallRank(safeLifts);
+  const rank = getOverallRank(state.lifts || {});
   const baseVolume = rank === 'Elite' ? 8000 : rank === 'Gold' ? 6000 : rank === 'Silver' ? 4000 : 2500;
   const multiplier = 1 + ((state.streak || 0) * 0.05);
   const targetVolume = Math.round(baseVolume * multiplier);
@@ -203,20 +138,17 @@ export function getDailyObjective(state: IronState) {
 
 /**
  * Calculates weekly tonnage progress.
- * Safe from null logs.
  */
 export function getWeeklyTonnage(workoutLogs: any[]) {
   if (!workoutLogs || !Array.isArray(workoutLogs)) return 0;
   
   const now = new Date();
   const day = now.getDay();
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Monday start
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1); 
   const monday = new Date(now.setDate(diff));
   monday.setHours(0, 0, 0, 0);
 
-  const weeklyVolume = workoutLogs
+  return workoutLogs
     .filter(log => log && log.date && new Date(log.date) >= monday)
     .reduce((sum, log) => sum + (log.volume || 0), 0);
-
-  return weeklyVolume;
 }

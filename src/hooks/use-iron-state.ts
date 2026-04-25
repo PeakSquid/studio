@@ -35,7 +35,7 @@ const DEFAULT_STATE: IronState = {
   level: 1,
 };
 
-const STORAGE_KEY = 'ironrank_state_v14';
+const STORAGE_KEY = 'ironrank_state_v15';
 
 /**
  * Manages the persistent IronRank athlete state with cloud synchronization.
@@ -59,7 +59,6 @@ export function useIronState() {
     if (!isUserLoading && !isRemoteLoading) {
       if (remoteData) {
         setState((prev) => {
-          // Deep merge to ensure valid local keys aren't overwritten by nulls
           const mergedLifts = { ...prev.lifts };
           if (remoteData.lifts && typeof remoteData.lifts === 'object') {
             Object.entries(remoteData.lifts).forEach(([key, val]) => {
@@ -67,14 +66,8 @@ export function useIronState() {
             });
           }
 
-          const mergedSettings = { ...prev.settings };
-          if (remoteData.settings && typeof remoteData.settings === 'object') {
-            Object.assign(mergedSettings, remoteData.settings);
-          }
-
-          const mergedActivity = Array.isArray(remoteData.activity) 
-            ? [...remoteData.activity] 
-            : Array(21).fill(0);
+          const mergedSettings = { ...prev.settings, ...(remoteData.settings || {}) };
+          const mergedActivity = Array.isArray(remoteData.activity) ? [...remoteData.activity] : prev.activity;
 
           return { 
             ...prev, 
@@ -105,20 +98,9 @@ export function useIronState() {
   const updateState = (updater: (prev: IronState) => IronState) => {
     setState((prev) => {
       const next = updater(prev);
-      
-      // Ensure UID is set
-      if (user && next.id !== user.uid) {
-        next.id = user.uid;
-      }
-      
-      // Persist locally
+      if (user && next.id !== user.uid) next.id = user.uid;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      
-      // Side effect handled non-blocking
-      if (userDocRef) {
-        setDocumentNonBlocking(userDocRef, next, { merge: true });
-      }
-      
+      if (userDocRef) setDocumentNonBlocking(userDocRef, next, { merge: true });
       return next;
     });
   };

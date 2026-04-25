@@ -1,10 +1,10 @@
+
 'use server';
 /**
  * @fileOverview This file defines a Genkit flow for generating a personalized 12-week training plan.
- * Hardened with resilient model references and biomechanical sanitization.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, googleAIPlugin} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const AICoachGeneratePlanInputSchema = z.object({
@@ -61,7 +61,7 @@ export type AICoachGeneratePlanOutput = z.infer<typeof AICoachGeneratePlanOutput
 
 const generatePlanPrompt = ai.definePrompt({
   name: 'generatePlanPrompt',
-  model: 'googleai/gemini-1.5-flash',
+  model: googleAIPlugin.model('gemini-1.5-flash'),
   input: { schema: InternalGeneratePlanPromptSchema },
   output: { schema: AICoachGeneratePlanOutputSchema },
   prompt: `You are an expert AI weightlifting coach. Generate a personalized 12-week training plan for {{{userName}}} based on their current stats.
@@ -72,8 +72,8 @@ Streak: {{{streak}}} days
 Workouts Done: {{{workoutsCompleted}}}
 Bodyweight: {{{bodyweight}}} lbs
 
-The plan should consist of logical training blocks (e.g., Foundation, Hypertrophy, Peaking) and appropriate exercise weights (usually 70-85% of PR for heavy compounds).
-The weekly schedule should balance push, pull, legs, and rest days appropriately.`,
+The plan should consist of logical training blocks (e.g., Foundation, Hypertrophy, Peaking). 
+Return the plan in the structured format requested.`,
 });
 
 const aiCoachGeneratePlanFlow = ai.defineFlow(
@@ -103,13 +103,13 @@ const aiCoachGeneratePlanFlow = ai.defineFlow(
       });
 
       if (!output) {
-        throw new Error('Intelligence extraction failure: Model output invalid.');
+        throw new Error('Intelligence extraction failure.');
       }
 
       return output;
     } catch (error: any) {
       console.error('AI Generate Plan Error:', error);
-      throw new Error(`Plan generation uplink failure: ${error.message || 'Unknown server disruption'}`);
+      throw new Error(`Plan generation failure: ${error.message}`);
     }
   }
 );
