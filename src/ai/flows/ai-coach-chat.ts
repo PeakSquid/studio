@@ -126,7 +126,7 @@ const generateWorkoutPlanTool = ai.defineTool(
 
 const aiCoachPrompt = ai.definePrompt({
   name: 'aiCoachPrompt',
-  model: googleAIPlugin.model('gemini-1.5-flash'),
+  model: googleAIPlugin.model('gemini-2.5-flash'),
   input: {schema: InternalAICoachPromptSchema},
   output: {schema: AICoachChatOutputSchema},
   tools: [generateWorkoutPlanTool],

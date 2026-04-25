@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview This file defines a Genkit flow for generating a personalized 12-week training plan.
@@ -61,7 +60,7 @@ export type AICoachGeneratePlanOutput = z.infer<typeof AICoachGeneratePlanOutput
 
 const generatePlanPrompt = ai.definePrompt({
   name: 'generatePlanPrompt',
-  model: googleAIPlugin.model('gemini-1.5-flash'),
+  model: googleAIPlugin.model('gemini-2.5-flash'),
   input: { schema: InternalGeneratePlanPromptSchema },
   output: { schema: AICoachGeneratePlanOutputSchema },
   prompt: `You are an expert AI weightlifting coach. Generate a personalized 12-week training plan for {{{userName}}} based on their current stats.
