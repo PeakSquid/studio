@@ -43,7 +43,8 @@ export function getOverallRank(lifts: Record<string, LiftData>): string {
 export function getOverallRankProgress(lifts: Record<string, LiftData>) {
   const currentRank = getOverallRank(lifts);
   const ranks = ['Bronze', 'Silver', 'Gold', 'Elite'];
-  const nextRank = ranks[ranks.indexOf(currentRank) + 1];
+  const currentIndex = ranks.indexOf(currentRank);
+  const nextRank = currentIndex < ranks.length - 1 ? ranks[currentIndex + 1] : null;
   
   if (!nextRank || !lifts || typeof lifts !== 'object' || lifts === null) {
     return { currentRank, nextRank: 'MAX', progress: 100, remaining: 0 };

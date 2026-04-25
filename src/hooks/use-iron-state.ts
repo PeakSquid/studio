@@ -35,7 +35,7 @@ const DEFAULT_STATE: IronState = {
   level: 1,
 };
 
-const STORAGE_KEY = 'ironrank_state_v13';
+const STORAGE_KEY = 'ironrank_state_v14';
 
 /**
  * Manages the persistent IronRank athlete state with cloud synchronization.
@@ -59,7 +59,7 @@ export function useIronState() {
     if (!isUserLoading && !isRemoteLoading) {
       if (remoteData) {
         setState((prev) => {
-          // Robust deep merge to ensure valid local keys aren't overwritten by nulls
+          // Deep merge to ensure valid local keys aren't overwritten by nulls
           const mergedLifts = { ...prev.lifts };
           if (remoteData.lifts && typeof remoteData.lifts === 'object') {
             Object.entries(remoteData.lifts).forEach(([key, val]) => {
@@ -74,7 +74,7 @@ export function useIronState() {
 
           const mergedActivity = Array.isArray(remoteData.activity) 
             ? [...remoteData.activity] 
-            : Array.isArray(prev.activity) ? [...prev.activity] : Array(21).fill(0);
+            : Array(21).fill(0);
 
           return { 
             ...prev, 
@@ -104,14 +104,17 @@ export function useIronState() {
 
   const updateState = (updater: (prev: IronState) => IronState) => {
     setState((prev) => {
-      let next = updater(prev);
+      const next = updater(prev);
       
+      // Ensure UID is set
       if (user && next.id !== user.uid) {
-        next = { ...next, id: user.uid };
+        next.id = user.uid;
       }
       
+      // Persist locally
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       
+      // Side effect handled non-blocking
       if (userDocRef) {
         setDocumentNonBlocking(userDocRef, next, { merge: true });
       }
