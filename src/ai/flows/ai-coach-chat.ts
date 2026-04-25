@@ -1,7 +1,7 @@
 'use server';
 /**
  * @fileOverview An AI coach agent that provides personalized advice and workout plans.
- * Hardened with resilient model references and defensive telemetry handling.
+ * Upgraded to gemini-2.5-flash for Neural Protocol resilience.
  */
 
 import {ai, googleAIPlugin} from '@/ai/genkit';
@@ -126,7 +126,7 @@ const generateWorkoutPlanTool = ai.defineTool(
 
 const aiCoachPrompt = ai.definePrompt({
   name: 'aiCoachPrompt',
-  model: googleAIPlugin.model('gemini-2.5-flash'),
+  model: 'googleai/gemini-2.5-flash',
   input: {schema: InternalAICoachPromptSchema},
   output: {schema: AICoachChatOutputSchema},
   tools: [generateWorkoutPlanTool],
@@ -165,14 +165,14 @@ export async function aiCoachChat(input: AICoachChatInput): Promise<AICoachChatO
     });
 
     if (!output) {
-      return { reply: "Command logic error: Model failed to produce structured intelligence." };
+      return { reply: "Tactical Downlink Failure: Intelligence extraction aborted." };
     }
 
     return output;
   } catch (error: any) {
     console.error('AI Coach Chat Error:', error);
     return { 
-      reply: `Tactical downlink failure: ${error.message || 'Signal disruption'}. Verify baseline and retry.` 
+      reply: `Command logic failure: ${error.message || 'Signal disruption'}. Re-align baseline and retry.` 
     };
   }
 }

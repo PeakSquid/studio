@@ -1,6 +1,7 @@
 'use server';
 /**
  * @fileOverview This file defines a Genkit flow for generating a personalized 12-week training plan.
+ * Upgraded to gemini-2.5-flash for maximum Neural Protocol stability.
  */
 
 import {ai, googleAIPlugin} from '@/ai/genkit';
@@ -60,7 +61,7 @@ export type AICoachGeneratePlanOutput = z.infer<typeof AICoachGeneratePlanOutput
 
 const generatePlanPrompt = ai.definePrompt({
   name: 'generatePlanPrompt',
-  model: googleAIPlugin.model('gemini-2.5-flash'),
+  model: 'googleai/gemini-2.5-flash',
   input: { schema: InternalGeneratePlanPromptSchema },
   output: { schema: AICoachGeneratePlanOutputSchema },
   prompt: `You are an expert AI weightlifting coach. Generate a personalized 12-week training plan for {{{userName}}} based on their current stats.
@@ -72,7 +73,7 @@ Workouts Done: {{{workoutsCompleted}}}
 Bodyweight: {{{bodyweight}}} lbs
 
 The plan should consist of logical training blocks (e.g., Foundation, Hypertrophy, Peaking). 
-Return the plan in the structured format requested.`,
+Return the plan in the structured format requested. Persona: Grit & Iron.`,
 });
 
 const aiCoachGeneratePlanFlow = ai.defineFlow(
@@ -102,13 +103,13 @@ const aiCoachGeneratePlanFlow = ai.defineFlow(
       });
 
       if (!output) {
-        throw new Error('Intelligence extraction failure.');
+        throw new Error('Neural Protocol failure: No output generated.');
       }
 
       return output;
     } catch (error: any) {
       console.error('AI Generate Plan Error:', error);
-      throw new Error(`Plan generation failure: ${error.message}`);
+      throw new Error(`Strategic Downlink Failure: ${error.message}`);
     }
   }
 );
